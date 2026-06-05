@@ -254,46 +254,39 @@ function vForecast() {
   const windowDates = []; for (let d = FC_WIN_START; d <= FC_WIN_END; d = addDaysStr(d, 1)) windowDates.push(d);
   S.fc = S.fc || {};
   if (S.fc.roas == null) S.fc.roas = Math.round(curROAS * 100) / 100;
-  if (S.fc.raise == null) S.fc.raise = 0;
+  const futureD = windowDates.filter(d => d > lastActual);
+  const NS = sum(futureD, d => S0 * curveMod(d)) || 1;   // tổng spend "bám cầu" tương lai (scale=1 → ROAS ≈ slider)
+  if (S.fc.tgtSpend == null) S.fc.tgtSpend = Math.round(NS / 1000) * 1000;
 
   function build() {
-    const ROAS = S.fc.roas, push = 1 + S.fc.raise / 100, D0 = (S0 * ROAS) / c0;
+    const ROAS = S.fc.roas, D0 = (S0 * ROAS) / c0, scale = (S.fc.tgtSpend || NS) / NS;
     const fc = {};
-    windowDates.forEach(d => {
-      if (d <= lastActual) return;
-      const m = curveMod(d);
-      const spend = S0 * m * push;          // spend bám đường cầu × mức đẩy
-      const kt = k0 * m;                     // bão hòa co giãn theo cầu → ROAS ổn định
+    futureD.forEach(d => {
+      const m = curveMod(d), spend = S0 * m * scale, kt = k0 * m;   // rải Target Spend theo đường cầu
       const rev = D0 * m * (1 - Math.exp(-spend / kt));
       fc[d] = { spend, rev, profit: rev * (1 - varCost) - spend, ful: rev * fulfillRatio };
     });
     return fc;
   }
   function totals(fc) {
-    const fut = windowDates.filter(d => d > lastActual && fc[d]), act = windowDates.filter(d => d <= lastActual && ovBy[d]);
-    return { fut, act,
-      adBudget: sum(fut, d => fc[d].spend), fulfillNeed: sum(fut, d => fc[d].ful),
-      cash7: sum(fut.slice(0, 7), d => fc[d].spend + fc[d].ful),
-      totRev: sum(act, d => ovBy[d].revenue) + sum(fut, d => fc[d].rev),
+    const fut = futureD.filter(d => fc[d]), act = windowDates.filter(d => d <= lastActual && ovBy[d]);
+    const spF = sum(fut, d => fc[d].spend), revF = sum(fut, d => fc[d].rev);
+    return { fut, act, spend: spF, fulfillNeed: sum(fut, d => fc[d].ful),
+      cash7: sum(fut.slice(0, 7), d => fc[d].spend + fc[d].ful), effRoas: spF ? revF / spF : 0,
+      totRev: sum(act, d => ovBy[d].revenue) + revF,
       totProfit: sum(act, d => ovBy[d].profit) + sum(fut, d => fc[d].profit) };
   }
-  // prefill target = forecast lần đầu
-  if (S.fc.tgtRev == null || S.fc.tgtProfit == null) { const t = totals(build());
-    if (S.fc.tgtRev == null) S.fc.tgtRev = Math.round(t.totRev / 1000) * 1000;
-    if (S.fc.tgtProfit == null) S.fc.tgtProfit = Math.round(t.totProfit / 1000) * 1000; }
 
   function recompute() {
-    S.fc.roas = +fcRoas.value; S.fc.raise = +fcRaise.value;
-    S.fc.tgtRev = +fcTgtRev.value || 0; S.fc.tgtProfit = +fcTgtProfit.value || 0;
-    fcRoasV.textContent = S.fc.roas.toFixed(2) + 'x'; fcRaiseV.textContent = (S.fc.raise >= 0 ? '+' : '') + S.fc.raise + '%';
+    S.fc.roas = +fcRoas.value; S.fc.tgtSpend = +fcTgtSpend.value || 0;
+    fcRoasV.textContent = S.fc.roas.toFixed(2) + 'x';
     const fc = build(), t = totals(fc);
-    const pct = (v, tg) => tg ? `<p class="cmp ${v >= tg ? 'up' : 'down'}">${(v / tg * 100).toFixed(0)}% mục tiêu ${usd(tg)}</p>` : '<p class="p">đặt target để so</p>';
     document.getElementById('fcKpi').innerHTML = [
-      `<div class="card"><p class="l">💰 Ad Budget cần chuẩn bị</p><p class="v">${usd2(t.adBudget)}</p><p class="p">tới ${FC_WIN_END.slice(5)}</p></div>`,
+      `<div class="card"><p class="l">💵 Forecast Revenue (cả kỳ)</p><p class="v">${usd(t.totRev)}</p></div>`,
+      `<div class="card"><p class="l">📈 Forecast Net Profit (cả kỳ)</p><p class="v ${t.totProfit<0?'neg':''}">${usd(t.totProfit)}</p></div>`,
+      `<div class="card"><p class="l">📊 ROAS hiệu dụng</p><p class="v">${t.effRoas.toFixed(2)}x</p><p class="p">trên spend ${usd(t.spend)}</p></div>`,
       `<div class="card"><p class="l">📦 Fulfill cần chuẩn bị</p><p class="v">${usd2(t.fulfillNeed)}</p><p class="p">${(fulfillRatio*100).toFixed(0)}% revenue</p></div>`,
-      `<div class="card"><p class="l">⏳ Tiền cần 7 ngày tới</p><p class="v" style="color:var(--amber)">${usd2(t.cash7)}</p><p class="p">spend + fulfill</p></div>`,
-      `<div class="card"><p class="l">🎯 Forecast Revenue (cả kỳ)</p><p class="v">${usd(t.totRev)}</p>${pct(t.totRev, S.fc.tgtRev)}</div>`,
-      `<div class="card"><p class="l">🎯 Forecast Net Profit (cả kỳ)</p><p class="v">${usd(t.totProfit)}</p>${pct(t.totProfit, S.fc.tgtProfit)}</div>`
+      `<div class="card"><p class="l">⏳ Tiền cần 7 ngày tới</p><p class="v" style="color:var(--amber)">${usd2(t.cash7)}</p><p class="p">spend + fulfill</p></div>`
     ].join('');
     const aRev = windowDates.map(d => (ovBy[d] && d <= lastActual) ? ovBy[d].revenue : null);
     const aSp = windowDates.map(d => (ovBy[d] && d <= lastActual) ? ovBy[d].totalAds : null);
@@ -312,17 +305,15 @@ function vForecast() {
   document.getElementById('view').innerHTML = `
     <div class="panel"><h3>Forecast — Father's Day 🇫🇷 21/6 <span style="font-weight:400;color:var(--muted);font-size:11px">(chuẩn bị dòng tiền · cut-off thường 12/6, express 16/6)</span></h3>
       <div class="fields">
-        <div class="fld"><label>🎯 Target Revenue (cả kỳ)</label><input type="number" id="fcTgtRev" value="${S.fc.tgtRev}"></div>
-        <div class="fld"><label>🎯 Target Net Profit (cả kỳ)</label><input type="number" id="fcTgtProfit" value="${S.fc.tgtProfit}"></div>
+        <div class="fld"><label>💰 Target Total Spend (từ nay → ${FC_WIN_END.slice(5)})</label><input type="number" id="fcTgtSpend" value="${S.fc.tgtSpend}" step="1000"></div>
         <div class="fld"><label>ROAS dự kiến: <b id="fcRoasV">${S.fc.roas.toFixed(2)}x</b></label><input type="range" id="fcRoas" min="1" max="4" step="0.05" value="${S.fc.roas}"></div>
-        <div class="fld"><label>Mức đẩy budget vs cầu: <b id="fcRaiseV">${S.fc.raise>=0?'+':''}${S.fc.raise}%</b></label><input type="range" id="fcRaise" min="-30" max="50" value="${S.fc.raise}"></div>
       </div>
       <div id="fcKpi" class="kpi"></div>
       <div class="chartwrap"><canvas id="fcChart"></canvas></div>
-      <p class="note">Spend BÁM đường cầu (khuôn Đức, đỉnh quanh 12–16/6) × mức đẩy; doanh thu = cầu × bão hòa → đẩy budget cao thì biên lợi nhuận giảm dần (0% = bám sát cầu, ROAS ≈ hiện tại). varCost ${(varCost*100).toFixed(0)}% & fulfill ${(fulfillRatio*100).toFixed(0)}% tự tính thực tế · ROAS hiện tại ${curROAS.toFixed(2)}x. Ngày đã có data = số thực, còn lại = dự báo.</p>
+      <p class="note">Nhập Target Total Spend → rải theo đường cầu (khuôn Đức, đỉnh 12–16/6) → ra Revenue/Profit. Spend càng cao thì ROAS hiệu dụng càng giảm (bão hòa). Mặc định = mức "bám sát cầu" (ROAS ≈ hiện tại ${curROAS.toFixed(2)}x). varCost ${(varCost*100).toFixed(0)}% & fulfill ${(fulfillRatio*100).toFixed(0)}% tự tính thực tế. Ngày đã có data = số thực, còn lại = dự báo.</p>
     </div>`;
-  ['fcRoas', 'fcRaise'].forEach(id => document.getElementById(id).addEventListener('input', recompute));
-  ['fcTgtRev', 'fcTgtProfit'].forEach(id => document.getElementById(id).addEventListener('input', recompute));
+  document.getElementById('fcRoas').addEventListener('input', recompute);
+  document.getElementById('fcTgtSpend').addEventListener('input', recompute);
   recompute();
 }
 
