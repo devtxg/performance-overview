@@ -250,22 +250,22 @@ function vForecast() {
     if (x >= C[0][0]) return C[0][1]; if (x <= C[C.length-1][0]) return C[C.length-1][1];
     for (let i = 0; i < C.length-1; i++) { const a = C[i], b = C[i+1]; if (x <= a[0] && x >= b[0]) return a[1] + (b[1]-a[1]) * (a[0]-x) / (a[0]-b[0]); } return 1; };
   const norm = rawCurve(lastActual) || 1, curveMod = d => rawCurve(d) / norm;
-  const c0 = 0.7, k = -S0 / Math.log(1 - c0);
+  const c0 = 0.7, k0 = -S0 / Math.log(1 - c0);   // k co giãn theo cầu ở build()
   const windowDates = []; for (let d = FC_WIN_START; d <= FC_WIN_END; d = addDaysStr(d, 1)) windowDates.push(d);
   S.fc = S.fc || {};
   if (S.fc.roas == null) S.fc.roas = Math.round(curROAS * 100) / 100;
-  if (S.fc.raise == null) S.fc.raise = 12;
+  if (S.fc.raise == null) S.fc.raise = 0;
 
   function build() {
-    const ROAS = S.fc.roas, raise = S.fc.raise / 100, DOWN = 0.30, D0 = (S0 * ROAS) / c0;
-    const fc = {}; let prevSpend = S0, started = false;
+    const ROAS = S.fc.roas, push = 1 + S.fc.raise / 100, D0 = (S0 * ROAS) / c0;
+    const fc = {};
     windowDates.forEach(d => {
-      if (d <= lastActual) { if (ovBy[d]) prevSpend = ovBy[d].totalAds; return; }
-      if (!started) { prevSpend = Math.max(prevSpend, S0); started = true; }
-      const spend = (d <= FC_CUT_EXP) ? prevSpend * (1 + raise) : Math.max(prevSpend * (1 - DOWN), S0 * 0.3);
-      const rev = D0 * curveMod(d) * (1 - Math.exp(-spend / k));
+      if (d <= lastActual) return;
+      const m = curveMod(d);
+      const spend = S0 * m * push;          // spend bám đường cầu × mức đẩy
+      const kt = k0 * m;                     // bão hòa co giãn theo cầu → ROAS ổn định
+      const rev = D0 * m * (1 - Math.exp(-spend / kt));
       fc[d] = { spend, rev, profit: rev * (1 - varCost) - spend, ful: rev * fulfillRatio };
-      prevSpend = spend;
     });
     return fc;
   }
@@ -285,7 +285,7 @@ function vForecast() {
   function recompute() {
     S.fc.roas = +fcRoas.value; S.fc.raise = +fcRaise.value;
     S.fc.tgtRev = +fcTgtRev.value || 0; S.fc.tgtProfit = +fcTgtProfit.value || 0;
-    fcRoasV.textContent = S.fc.roas.toFixed(2) + 'x'; fcRaiseV.textContent = '+' + S.fc.raise + '%';
+    fcRoasV.textContent = S.fc.roas.toFixed(2) + 'x'; fcRaiseV.textContent = (S.fc.raise >= 0 ? '+' : '') + S.fc.raise + '%';
     const fc = build(), t = totals(fc);
     const pct = (v, tg) => tg ? `<p class="cmp ${v >= tg ? 'up' : 'down'}">${(v / tg * 100).toFixed(0)}% mục tiêu ${usd(tg)}</p>` : '<p class="p">đặt target để so</p>';
     document.getElementById('fcKpi').innerHTML = [
@@ -315,11 +315,11 @@ function vForecast() {
         <div class="fld"><label>🎯 Target Revenue (cả kỳ)</label><input type="number" id="fcTgtRev" value="${S.fc.tgtRev}"></div>
         <div class="fld"><label>🎯 Target Net Profit (cả kỳ)</label><input type="number" id="fcTgtProfit" value="${S.fc.tgtProfit}"></div>
         <div class="fld"><label>ROAS dự kiến: <b id="fcRoasV">${S.fc.roas.toFixed(2)}x</b></label><input type="range" id="fcRoas" min="1" max="4" step="0.05" value="${S.fc.roas}"></div>
-        <div class="fld"><label>% tăng budget/ngày: <b id="fcRaiseV">+${S.fc.raise}%</b></label><input type="range" id="fcRaise" min="0" max="20" value="${S.fc.raise}"></div>
+        <div class="fld"><label>Mức đẩy budget vs cầu: <b id="fcRaiseV">${S.fc.raise>=0?'+':''}${S.fc.raise}%</b></label><input type="range" id="fcRaise" min="-30" max="50" value="${S.fc.raise}"></div>
       </div>
       <div id="fcKpi" class="kpi"></div>
       <div class="chartwrap"><canvas id="fcChart"></canvas></div>
-      <p class="note">Spend tăng ≤${S.fc.raise}%/ngày tới cut-off rồi giảm 30%/ngày · doanh thu theo đường cong cầu (khuôn Đức) + bão hòa (capture 70%) · varCost ${(varCost*100).toFixed(0)}% & fulfill ${(fulfillRatio*100).toFixed(0)}% tự tính từ thực tế · ROAS hiện tại ${curROAS.toFixed(2)}x. Ngày đã có data = số thực, còn lại = dự báo.</p>
+      <p class="note">Spend BÁM đường cầu (khuôn Đức, đỉnh quanh 12–16/6) × mức đẩy; doanh thu = cầu × bão hòa → đẩy budget cao thì biên lợi nhuận giảm dần (0% = bám sát cầu, ROAS ≈ hiện tại). varCost ${(varCost*100).toFixed(0)}% & fulfill ${(fulfillRatio*100).toFixed(0)}% tự tính thực tế · ROAS hiện tại ${curROAS.toFixed(2)}x. Ngày đã có data = số thực, còn lại = dự báo.</p>
     </div>`;
   ['fcRoas', 'fcRaise'].forEach(id => document.getElementById(id).addEventListener('input', recompute));
   ['fcTgtRev', 'fcTgtProfit'].forEach(id => document.getElementById(id).addEventListener('input', recompute));
