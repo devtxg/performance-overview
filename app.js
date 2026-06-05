@@ -15,9 +15,14 @@ const daysBetween = (a, b) => Math.round((new Date(b + 'T00:00:00') - new Date(a
 
 fetch('./data.json?_=' + Date.now()).then(r => r.json()).then(d => {
   DATA = d;
+  // Bỏ ngày HÔM NAY (data dở dang) khỏi mọi tab — chỉ tính/vẽ tới hết hôm qua.
+  const today = ymdLocal(new Date());
+  if (DATA.overview) DATA.overview = DATA.overview.filter(o => o.date < today);
+  if (DATA.fact) DATA.fact = DATA.fact.filter(r => r.Date < today);
+  if (DATA.ads) DATA.ads = DATA.ads.filter(a => a.date < today);
   document.getElementById('genAt').textContent = 'cập nhật ' + (d.generatedAt || '').slice(0, 16).replace('T', ' ');
   // init custom range bounds
-  const dates = d.overview.map(o => o.date).sort();
+  const dates = DATA.overview.map(o => o.date).sort();
   S.cFrom = dates[0]; S.cTo = dates[dates.length - 1];
   document.getElementById('cFrom').value = S.cFrom; document.getElementById('cTo').value = S.cTo;
   bindUI(); render();
