@@ -1,12 +1,17 @@
 /* Koccie Dashboard v1 — đọc ./data.json, render 5 tab client-side. */
 let DATA = null, CH = {};
-const S = { tab: 'overview', range: 'all', cFrom: '', cTo: '', mode: 'daily', metric: 'spend', dim: 'market', pMarket: 'all' };
+const S = { tab: 'overview', range: 'all', cFrom: '', cTo: '', mode: 'daily', metric: 'spend', dim: 'market', pMarket: 'all', compare: false };
 
 const usd = n => '$' + (Math.round(n)).toLocaleString('en-US');
 const usd2 = n => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const k$ = n => Math.abs(n) >= 1000 ? '$' + (n / 1000).toFixed(1) + 'k' : '$' + Math.round(n);
 const sum = (a, f) => a.reduce((s, x) => s + (f ? f(x) : x), 0);
 function destroyChart(id) { if (CH[id]) { CH[id].destroy(); delete CH[id]; } }
+// ----- date helpers (local calendar) -----
+const ymdLocal = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const yestStr = () => { const d = new Date(); d.setDate(d.getDate() - 1); return ymdLocal(d); };
+const addDaysStr = (s, n) => { const d = new Date(s + 'T00:00:00'); d.setDate(d.getDate() + n); return ymdLocal(d); };
+const daysBetween = (a, b) => Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 864e5);
 
 fetch('./data.json?_=' + Date.now()).then(r => r.json()).then(d => {
   DATA = d;
@@ -28,10 +33,19 @@ function bindUI() {
   rng.addEventListener('change', () => {
     S.range = rng.value;
     document.getElementById('customRange').style.display = S.range === 'custom' ? 'inline' : 'none';
+    syncCmpState();
     render();
   });
   document.getElementById('cFrom').addEventListener('change', e => { S.cFrom = e.target.value; if (S.range === 'custom') render(); });
   document.getElementById('cTo').addEventListener('change', e => { S.cTo = e.target.value; if (S.range === 'custom') render(); });
+  document.getElementById('cmp').addEventListener('change', e => { S.compare = e.target.checked; render(); });
+  syncCmpState();
+}
+// range='all' → không có kỳ trước → khóa mờ tickbox compare
+function syncCmpState() {
+  const dis = S.range === 'all', box = document.getElementById('cmp');
+  box.disabled = dis;
+  document.getElementById('cmpLabel').classList.toggle('disabled', dis);
 }
 
 // ----- date range -----
@@ -39,31 +53,65 @@ function rangeDates() {
   const all = DATA.overview.map(o => o.date).sort();
   if (S.range === 'all') return new Set(all);
   if (S.range === 'custom') return new Set(all.filter(d => d >= S.cFrom && d <= S.cTo));
+  if (S.range === 'yesterday') { const y = yestStr(); return new Set(all.filter(d => d === y)); }
   const n = +S.range, keep = all.slice(-n);
   return new Set(keep);
+}
+// khoảng ngày [from,to] của range hiện tại (null nếu 'all')
+function curBounds() {
+  if (S.range === 'all') return null;
+  if (S.range === 'custom') return (S.cFrom && S.cTo) ? [S.cFrom, S.cTo] : null;
+  if (S.range === 'yesterday') { const y = yestStr(); return [y, y]; }
+  const all = DATA.overview.map(o => o.date).sort(), keep = all.slice(-(+S.range));
+  return keep.length ? [keep[0], keep[keep.length - 1]] : null;
+}
+// tập ngày của KỲ TRƯỚC (cùng độ dài, ngay liền trước theo lịch)
+function prevDatesSet() {
+  const b = curBounds(); if (!b) return null;
+  const len = daysBetween(b[0], b[1]) + 1;
+  const prevTo = addDaysStr(b[0], -1), prevFrom = addDaysStr(b[0], -len);
+  return new Set(DATA.overview.map(o => o.date).filter(d => d >= prevFrom && d <= prevTo));
 }
 const ovFiltered = () => { const r = rangeDates(); return DATA.overview.filter(o => r.has(o.date)); };
 const factFiltered = () => { const r = rangeDates(); return DATA.fact.filter(o => r.has(o.Date)); };
 const adsFiltered = () => { const r = rangeDates(); return DATA.ads.filter(o => r.has(o.date)); };
 
 // ===== KPI strip (mọi tab) =====
+function kpiVals(ov) {
+  const sales = sum(ov, o => o.revenue), ads = sum(ov, o => o.totalAds), orders = sum(ov, o => o.orders);
+  const fb = sum(ov, o => o.meta), gg = sum(ov, o => o.google), api = sum(ov, o => o.api), ful = sum(ov, o => o.fulfill), net = sum(ov, o => o.profit);
+  return { orders, sales, ads, fb, gg, aov: sales / orders || 0, roas: sales / ads || 0, api, ful, net };
+}
+// % thay đổi vs kỳ trước → ▲ xanh (tăng) / ▼ đỏ (giảm)
+function deltaHtml(cur, prev) {
+  if (prev == null) return '';
+  if (prev === 0) return cur > 0 ? `<p class="cmp up">▲ new</p>` : `<p class="cmp flat">— 0%</p>`;
+  const pct = (cur - prev) / Math.abs(prev) * 100;
+  if (Math.abs(pct) < 0.05) return `<p class="cmp flat">— 0%</p>`;
+  const up = cur > prev;
+  return `<p class="cmp ${up ? 'up' : 'down'}">${up ? '▲' : '▼'} ${Math.abs(pct).toFixed(1)}%</p>`;
+}
 function renderKPI() {
-  const ov = ovFiltered();
-  const S_ = sum(ov, o => o.revenue), A = sum(ov, o => o.totalAds), O = sum(ov, o => o.orders);
-  const fb = sum(ov, o => o.meta), gg = sum(ov, o => o.google);
-  const api = sum(ov, o => o.api), ful = sum(ov, o => o.fulfill), net = sum(ov, o => o.profit);
-  const cards = [
-    ['Total Orders', O.toLocaleString()], ['Total Sales', usd2(S_)],
-    ['Total Ads Spend', usd2(A), (A / S_ * 100 || 0).toFixed(1) + '% of sales'],
-    ['FB Ads', usd2(fb), (fb / A * 100 || 0).toFixed(1) + '% of ads'],
-    ['Google Ads', usd2(gg), (gg / A * 100 || 0).toFixed(1) + '% of ads'],
-    ['AOV', usd2(S_ / O || 0)], ['ROAS', (S_ / A || 0).toFixed(2) + 'x'],
-    ['API Cost', usd2(api), (api / S_ * 100 || 0).toFixed(1) + '%'],
-    ['Fulfill Cost', usd2(ful), (ful / S_ * 100 || 0).toFixed(1) + '%'],
-    ['Net Profit', usd2(net)]
+  const cur = kpiVals(ovFiltered());
+  let prev = null;
+  if (S.compare && S.range !== 'all') { const ps = prevDatesSet(); if (ps && ps.size) prev = kpiVals(DATA.overview.filter(o => ps.has(o.date))); }
+  const defs = [
+    ['Total Orders', 'orders', v => v.toLocaleString(), null],
+    ['Total Sales', 'sales', usd2, null],
+    ['Total Ads Spend', 'ads', usd2, c => (c.ads / c.sales * 100 || 0).toFixed(1) + '% of sales'],
+    ['FB Ads', 'fb', usd2, c => (c.fb / c.ads * 100 || 0).toFixed(1) + '% of ads'],
+    ['Google Ads', 'gg', usd2, c => (c.gg / c.ads * 100 || 0).toFixed(1) + '% of ads'],
+    ['AOV', 'aov', usd2, null],
+    ['ROAS', 'roas', v => v.toFixed(2) + 'x', null],
+    ['API Cost', 'api', usd2, c => (c.api / c.sales * 100 || 0).toFixed(1) + '%'],
+    ['Fulfill Cost', 'ful', usd2, c => (c.ful / c.sales * 100 || 0).toFixed(1) + '%'],
+    ['Net Profit', 'net', usd2, null]
   ];
-  document.getElementById('kpi').innerHTML = cards.map(c =>
-    `<div class="card"><p class="l">${c[0]}</p><p class="v">${c[1]}</p>${c[2] ? `<p class="p">${c[2]}</p>` : ''}</div>`).join('');
+  document.getElementById('kpi').innerHTML = defs.map(([label, key, fmt, subFn]) => {
+    const sub = subFn ? subFn(cur) : '';
+    const cmp = prev ? deltaHtml(cur[key], prev[key]) : '';
+    return `<div class="card"><p class="l">${label}</p><p class="v">${fmt(cur[key])}</p>${sub ? `<p class="p">${sub}</p>` : ''}${cmp}</div>`;
+  }).join('');
 }
 
 function render() { renderKPI(); ({ overview: vOverview, marketing: vMarketing, product: vProduct, explorer: vExplorer, forecast: vForecast }[S.tab])(); }
