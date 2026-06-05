@@ -227,56 +227,98 @@ function vExplorer() {
   document.getElementById('fQ').addEventListener('input',draw); draw();
 }
 
-// ============ FORECAST ============
+// ============ FORECAST (Father's Day FR 21/6 — chuẩn bị dòng tiền) ============
+const FC_EVENT = '2026-06-21', FC_CUT_STD = '2026-06-12', FC_CUT_EXP = '2026-06-16';
+const FC_WIN_START = '2026-05-22', FC_WIN_END = '2026-07-06';
+// đường cong cầu (days-before-event → hệ số), khuôn từ Father's Day Đức 2026 (đỉnh quanh cut-off, rớt sau)
+const FC_CURVE = [[30,0.55],[22,0.78],[16,1.0],[12,1.35],[9,1.6],[5,1.85],[3,1.4],[0,0.75],[-7,0.5],[-15,0.45]];
 function vForecast() {
-  const ov = DATA.overview.slice().sort((a,b)=>a.date.localeCompare(b.date));
-  const last7 = ov.slice(-7), last3 = ov.slice(-3), y = ov.slice(-1);
-  const baseW = { '7': last7, '3': last3, '1': y };
-  const lastDate = ov.length ? ov[ov.length-1].date : new Date().toISOString().slice(0,10);
-  const fStart = new Date(lastDate+'T00:00:00Z'); fStart.setUTCDate(fStart.getUTCDate()+1);
-  S.fc = S.fc || { base:'7', H:14, ramp:12, mer:2.27, peak:'', cut:'' };
-  if (!S.fc.peak){ const p=new Date(fStart); p.setUTCDate(p.getUTCDate()+8); S.fc.peak=p.toISOString().slice(0,10); const c=new Date(fStart);c.setUTCDate(c.getUTCDate()+11);S.fc.cut=c.toISOString().slice(0,10);}
-  // mer mặc định từ last7
-  const merDefault = sum(last7,o=>o.totalAds) ? sum(last7,o=>o.revenue)/sum(last7,o=>o.totalAds) : 2.27;
-  const COST = 0.404, breakeven = (1/(1-COST)).toFixed(2);
+  const ov = DATA.overview.slice().sort((a, b) => a.date.localeCompare(b.date));
+  if (!ov.length) { document.getElementById('view').innerHTML = '<div class="panel">Chưa có data.</div>'; return; }
+  const lastActual = ov[ov.length - 1].date, ovBy = {}; ov.forEach(o => ovBy[o.date] = o);
+  const last7 = ov.slice(-7), last10 = ov.slice(-10);
+  const S0 = (sum(last7, o => o.totalAds) / (last7.length || 1)) || 1;
+  const curROAS = sum(last7, o => o.totalAds) ? sum(last7, o => o.revenue) / sum(last7, o => o.totalAds) : 2;
+  const fulfillRatio = sum(last10, o => o.revenue) ? sum(last10, o => o.fulfill) / sum(last10, o => o.revenue) : 0;
+  const varCost = sum(last10, o => o.revenue) ? sum(last10, o => (o.api + o.fulfill + (o.fixed || 0))) / sum(last10, o => o.revenue) : 0.4;
+  const rawCurve = d => { const x = daysBetween(d, FC_EVENT), C = FC_CURVE;
+    if (x >= C[0][0]) return C[0][1]; if (x <= C[C.length-1][0]) return C[C.length-1][1];
+    for (let i = 0; i < C.length-1; i++) { const a = C[i], b = C[i+1]; if (x <= a[0] && x >= b[0]) return a[1] + (b[1]-a[1]) * (a[0]-x) / (a[0]-b[0]); } return 1; };
+  const norm = rawCurve(lastActual) || 1, curveMod = d => rawCurve(d) / norm;
+  const c0 = 0.7, k = -S0 / Math.log(1 - c0);
+  const windowDates = []; for (let d = FC_WIN_START; d <= FC_WIN_END; d = addDaysStr(d, 1)) windowDates.push(d);
+  S.fc = S.fc || {};
+  if (S.fc.roas == null) S.fc.roas = Math.round(curROAS * 100) / 100;
+  if (S.fc.raise == null) S.fc.raise = 12;
+
+  function build() {
+    const ROAS = S.fc.roas, raise = S.fc.raise / 100, DOWN = 0.30, D0 = (S0 * ROAS) / c0;
+    const fc = {}; let prevSpend = S0, started = false;
+    windowDates.forEach(d => {
+      if (d <= lastActual) { if (ovBy[d]) prevSpend = ovBy[d].totalAds; return; }
+      if (!started) { prevSpend = Math.max(prevSpend, S0); started = true; }
+      const spend = (d <= FC_CUT_EXP) ? prevSpend * (1 + raise) : Math.max(prevSpend * (1 - DOWN), S0 * 0.3);
+      const rev = D0 * curveMod(d) * (1 - Math.exp(-spend / k));
+      fc[d] = { spend, rev, profit: rev * (1 - varCost) - spend, ful: rev * fulfillRatio };
+      prevSpend = spend;
+    });
+    return fc;
+  }
+  function totals(fc) {
+    const fut = windowDates.filter(d => d > lastActual && fc[d]), act = windowDates.filter(d => d <= lastActual && ovBy[d]);
+    return { fut, act,
+      adBudget: sum(fut, d => fc[d].spend), fulfillNeed: sum(fut, d => fc[d].ful),
+      cash7: sum(fut.slice(0, 7), d => fc[d].spend + fc[d].ful),
+      totRev: sum(act, d => ovBy[d].revenue) + sum(fut, d => fc[d].rev),
+      totProfit: sum(act, d => ovBy[d].profit) + sum(fut, d => fc[d].profit) };
+  }
+  // prefill target = forecast lần đầu
+  if (S.fc.tgtRev == null || S.fc.tgtProfit == null) { const t = totals(build());
+    if (S.fc.tgtRev == null) S.fc.tgtRev = Math.round(t.totRev / 1000) * 1000;
+    if (S.fc.tgtProfit == null) S.fc.tgtProfit = Math.round(t.totProfit / 1000) * 1000; }
+
+  function recompute() {
+    S.fc.roas = +fcRoas.value; S.fc.raise = +fcRaise.value;
+    S.fc.tgtRev = +fcTgtRev.value || 0; S.fc.tgtProfit = +fcTgtProfit.value || 0;
+    fcRoasV.textContent = S.fc.roas.toFixed(2) + 'x'; fcRaiseV.textContent = '+' + S.fc.raise + '%';
+    const fc = build(), t = totals(fc);
+    const pct = (v, tg) => tg ? `<p class="cmp ${v >= tg ? 'up' : 'down'}">${(v / tg * 100).toFixed(0)}% mục tiêu ${usd(tg)}</p>` : '<p class="p">đặt target để so</p>';
+    document.getElementById('fcKpi').innerHTML = [
+      `<div class="card"><p class="l">💰 Ad Budget cần chuẩn bị</p><p class="v">${usd2(t.adBudget)}</p><p class="p">tới ${FC_WIN_END.slice(5)}</p></div>`,
+      `<div class="card"><p class="l">📦 Fulfill cần chuẩn bị</p><p class="v">${usd2(t.fulfillNeed)}</p><p class="p">${(fulfillRatio*100).toFixed(0)}% revenue</p></div>`,
+      `<div class="card"><p class="l">⏳ Tiền cần 7 ngày tới</p><p class="v" style="color:var(--amber)">${usd2(t.cash7)}</p><p class="p">spend + fulfill</p></div>`,
+      `<div class="card"><p class="l">🎯 Forecast Revenue (cả kỳ)</p><p class="v">${usd(t.totRev)}</p>${pct(t.totRev, S.fc.tgtRev)}</div>`,
+      `<div class="card"><p class="l">🎯 Forecast Net Profit (cả kỳ)</p><p class="v">${usd(t.totProfit)}</p>${pct(t.totProfit, S.fc.tgtProfit)}</div>`
+    ].join('');
+    const aRev = windowDates.map(d => (ovBy[d] && d <= lastActual) ? ovBy[d].revenue : null);
+    const aSp = windowDates.map(d => (ovBy[d] && d <= lastActual) ? ovBy[d].totalAds : null);
+    const aPf = windowDates.map(d => (ovBy[d] && d <= lastActual) ? ovBy[d].profit : null);
+    const fRev = windowDates.map(() => null), fSp = windowDates.map(() => null), fPf = windowDates.map(() => null);
+    const li = windowDates.indexOf(lastActual);
+    if (li >= 0 && ovBy[lastActual]) { fRev[li] = ovBy[lastActual].revenue; fSp[li] = ovBy[lastActual].totalAds; fPf[li] = ovBy[lastActual].profit; }
+    windowDates.forEach((d, i) => { if (fc[d]) { fRev[i] = Math.round(fc[d].rev); fSp[i] = Math.round(fc[d].spend); fPf[i] = Math.round(fc[d].profit); } });
+    const sol = (lab, dt, c) => ({ label: lab, data: dt, borderColor: c, pointRadius: 0, borderWidth: 2, tension: .3, spanGaps: false });
+    const dsh = (lab, dt, c) => ({ label: lab, data: dt, borderColor: c, borderDash: [5, 4], pointRadius: 0, borderWidth: 2, tension: .3, spanGaps: false });
+    lineChart('fcChart', windowDates, [
+      sol('Revenue', aRev, '#378ADD'), dsh('Rev (fc)', fRev, 'rgba(55,138,221,.75)'),
+      sol('Spend', aSp, '#EF9F27'), dsh('Spend (fc)', fSp, 'rgba(239,159,39,.75)'),
+      sol('Profit', aPf, '#1D9E75'), dsh('Profit (fc)', fPf, 'rgba(29,158,117,.75)')]);
+  }
   document.getElementById('view').innerHTML = `
-    <div class="panel"><h3>Forecast — mô phỏng dòng tiền <span style="font-weight:400;color:var(--muted);font-size:11px">(kịch bản theo giả định, không phải cam kết)</span></h3>
+    <div class="panel"><h3>Forecast — Father's Day 🇫🇷 21/6 <span style="font-weight:400;color:var(--muted);font-size:11px">(chuẩn bị dòng tiền · cut-off thường 12/6, express 16/6)</span></h3>
       <div class="fields">
-        <div class="fld"><label>Baseline</label><select id="fcBase"><option value="1">Yesterday</option><option value="3">Last 3d</option><option value="7" selected>Last 7d</option></select></div>
-        <div class="fld"><label>Horizon</label><select id="fcH"><option value="7">7 ngày</option><option value="14" selected>14 ngày</option></select></div>
-        <div class="fld"><label>Budget Δ/ngày: <b id="fcRv">+${S.fc.ramp}%</b></label><input type="range" id="fcRamp" min="-10" max="30" value="${S.fc.ramp}"></div>
-        <div class="fld"><label>MER: <b id="fcMv">${(S.fc.mer||merDefault).toFixed(2)}</b></label><input type="range" id="fcMer" min="1.4" max="3.2" step="0.01" value="${S.fc.mer||merDefault}"></div>
-        <div class="fld"><label>Ngày spend đỉnh</label><input type="date" id="fcPeak" value="${S.fc.peak}"></div>
-        <div class="fld"><label>Ngày cut-off</label><input type="date" id="fcCut" value="${S.fc.cut}"></div>
+        <div class="fld"><label>🎯 Target Revenue (cả kỳ)</label><input type="number" id="fcTgtRev" value="${S.fc.tgtRev}"></div>
+        <div class="fld"><label>🎯 Target Net Profit (cả kỳ)</label><input type="number" id="fcTgtProfit" value="${S.fc.tgtProfit}"></div>
+        <div class="fld"><label>ROAS dự kiến: <b id="fcRoasV">${S.fc.roas.toFixed(2)}x</b></label><input type="range" id="fcRoas" min="1" max="4" step="0.05" value="${S.fc.roas}"></div>
+        <div class="fld"><label>% tăng budget/ngày: <b id="fcRaiseV">+${S.fc.raise}%</b></label><input type="range" id="fcRaise" min="0" max="20" value="${S.fc.raise}"></div>
       </div>
       <div id="fcKpi" class="kpi"></div>
       <div class="chartwrap"><canvas id="fcChart"></canvas></div>
-      <p class="note">Breakeven MER ≈ ${breakeven} — dưới mức này tăng spend = lỗ. Forecast từ ${fStart.toISOString().slice(0,10)}. Chưa tính độ trễ payout.</p>
+      <p class="note">Spend tăng ≤${S.fc.raise}%/ngày tới cut-off rồi giảm 30%/ngày · doanh thu theo đường cong cầu (khuôn Đức) + bão hòa (capture 70%) · varCost ${(varCost*100).toFixed(0)}% & fulfill ${(fulfillRatio*100).toFixed(0)}% tự tính từ thực tế · ROAS hiện tại ${curROAS.toFixed(2)}x. Ngày đã có data = số thực, còn lại = dự báo.</p>
     </div>`;
-  const baseSpend = (()=>{const w=baseW[document.getElementById?.('fcBase')?.value||S.fc.base]||last7;return sum(w,o=>o.totalAds)/(w.length||1);})();
-  const recompute=()=>{
-    S.fc.base=fcBase.value; S.fc.H=+fcH.value; S.fc.ramp=+fcRamp.value; S.fc.mer=+fcMer.value; S.fc.peak=fcPeak.value; S.fc.cut=fcCut.value;
-    fcRv.textContent=(S.fc.ramp>=0?'+':'')+S.fc.ramp+'%'; fcMv.textContent=S.fc.mer.toFixed(2);
-    const w=baseW[S.fc.base]||last7, b=sum(w,o=>o.totalAds)/(w.length||1), r=S.fc.ramp/100, mer=S.fc.mer, H=S.fc.H;
-    const off=v=>{const d=new Date(v+'T00:00:00Z');return Math.round((d-fStart)/864e5)+1;};
-    let peak=Math.min(Math.max(off(S.fc.peak),1),H), cut=Math.min(Math.max(off(S.fc.cut),1),H); if(cut<peak)cut=peak;
-    const fc=[]; for(let t=1;t<=H;t++){let sp; if(t<=peak)sp=b*Math.pow(1+r,t); else if(t<=cut)sp=b*Math.pow(1+r,peak); else sp=b*0.4;
-      fc.push({t,sp,rev:sp*mer,pf:sp*mer*(1-COST)-sp,u:0.04+0.028*t});}
-    const SP=sum(fc,x=>x.sp),RV=sum(fc,x=>x.rev),PF=sum(fc,x=>x.pf);
-    document.getElementById('fcKpi').innerHTML=[['Ad spend cần chuẩn bị',usd(SP)],['Revenue kỳ vọng',usd(RV)],['Net Profit kỳ vọng',usd(PF)],['Breakeven MER',breakeven+'x']].map(c=>`<div class="card"><p class="l">${c[0]} (${H}d)</p><p class="v">${c[1]}</p></div>`).join('');
-    // chart: actual last 14 + forecast
-    const act=ov.slice(-14); const labels=act.map(o=>o.date).concat(fc.map(x=>{const d=new Date(fStart);d.setUTCDate(d.getUTCDate()+x.t-1);return d.toISOString().slice(0,10);}));
-    const na=act.length; const pad=v=>act.map(()=>null);
-    const fRev=pad(),fSp=pad(),fPf=pad(); fRev[na-1]=act[na-1].revenue;fSp[na-1]=act[na-1].totalAds;fPf[na-1]=act[na-1].profit;
-    fc.forEach(x=>{fRev.push(Math.round(x.rev));fSp.push(Math.round(x.sp));fPf.push(Math.round(x.pf));});
-    const aRev=act.map(o=>o.revenue).concat(fc.map(()=>null)),aSp=act.map(o=>o.totalAds).concat(fc.map(()=>null)),aPf=act.map(o=>o.profit).concat(fc.map(()=>null));
-    const dash=(lab,d,c)=>({label:lab,data:d,borderColor:c,borderDash:[5,4],pointRadius:0,borderWidth:2,tension:.3});
-    const sol=(lab,d,c)=>({label:lab,data:d,borderColor:c,pointRadius:0,borderWidth:2,tension:.3});
-    lineChart('fcChart',labels,[sol('Revenue',aRev,'#378ADD'),dash('Rev(fc)',fRev,'rgba(55,138,221,.6)'),sol('Spend',aSp,'#EF9F27'),dash('Spend(fc)',fSp,'rgba(239,159,39,.6)'),sol('Profit',aPf,'#1D9E75'),dash('Profit(fc)',fPf,'rgba(29,158,117,.6)')]);
-  };
-  ['fcBase','fcH','fcPeak','fcCut'].forEach(id=>document.getElementById(id).addEventListener('change',recompute));
-  ['fcRamp','fcMer'].forEach(id=>document.getElementById(id).addEventListener('input',recompute));
-  if(!S.fc.mer) S.fc.mer=merDefault; recompute();
+  ['fcRoas', 'fcRaise'].forEach(id => document.getElementById(id).addEventListener('input', recompute));
+  ['fcTgtRev', 'fcTgtProfit'].forEach(id => document.getElementById(id).addEventListener('input', recompute));
+  recompute();
 }
 
 // ----- chart helper (dark theme) -----
