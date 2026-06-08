@@ -156,11 +156,11 @@ function vMarketing() {
   const ads = adsFiltered(), fact = factFiltered();
   const chans = ['Meta','Google','TikTok'].map(ch => { const a = ads.filter(x=>x.channel===ch);
     const sp=sum(a,x=>x.spend), cl=sum(a,x=>x.clicks), im=sum(a,x=>x.impressions), pr=sum(a,x=>x.platformRevenue);
-    return { ch, sp, roas: sp?pr/sp:0, cpc: cl?sp/cl:0, cpm: im?sp/im*1000:0 }; });
+    return { ch, sp, pr, roas: sp?pr/sp:0, cpc: cl?sp/cl:0, cpm: im?sp/im*1000:0 }; });
   const dimKey = { market:'Market', recipient:'Recipient', type:'Product Type' }[S.dim];
   const agg = {}; fact.forEach(r => { const key=r[dimKey]; agg[key]=agg[key]||{sp:0,rev:0,or:0}; agg[key].sp+=r['Total Ads Spend']; agg[key].rev+=r.Revenue; agg[key].or+=r.Orders; });
   document.getElementById('view').innerHTML = `
-    <div class="kpi">${chans.map(c=>`<div class="card"><p class="l">${c.ch}</p><p class="v">${usd(c.sp)}</p><p class="p">ROAS ${c.roas.toFixed(2)}x · CPC $${c.cpc.toFixed(2)} · CPM $${c.cpm.toFixed(2)}</p></div>`).join('')}</div>
+    <div class="kpi">${chans.map(c=>`<div class="card"><p class="l">${c.ch} · ROAS</p><p class="v" style="color:${c.roas>=1?'var(--green)':'var(--red)'}">${c.roas.toFixed(2)}x</p><p class="p">Spend ${usd(c.sp)} → Rev ${usd(c.pr)}</p><p class="p">CPC $${c.cpc.toFixed(2)} · CPM $${c.cpm.toFixed(2)}</p></div>`).join('')}</div>
     <div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="margin:0">Trend theo kênh</h3>
       <span class="seg" id="mMetric">${['spend','cpc','cpm','roas'].map(m=>`<button data-k="${m}" class="${S.metric===m?'on':''}">${m.toUpperCase()}</button>`).join('')}</span></div>
       <div class="chartwrap"><canvas id="mChart"></canvas></div></div>
@@ -169,7 +169,7 @@ function vMarketing() {
       <div class="scroll"><table><thead><tr><th>${dimKey}</th><th>Spend</th><th>Revenue</th><th>ROAS</th><th>CPA</th><th>AOV</th><th>Orders</th></tr></thead><tbody>${
         Object.keys(agg).sort((a,b)=>agg[b].rev-agg[a].rev).map(k=>{const x=agg[k];return `<tr><td>${k}</td><td>${k$(x.sp)}</td><td>${k$(x.rev)}</td><td>${(x.rev/x.sp||0).toFixed(2)}x</td><td>$${(x.sp/x.or||0).toFixed(1)}</td><td>$${(x.rev/x.or||0).toFixed(0)}</td><td>${x.or}</td></tr>`;}).join('')
       }</tbody></table></div>
-      <p class="note">ROAS = Revenue(Shopify)/Spend · platform ROAS ở thẻ kênh là số nền tảng tự báo (tham khảo).</p></div>`;
+      <p class="note">Thẻ kênh: <b>ROAS platform tự báo</b> = Revenue nền tảng đó gán / Spend kênh đó (Meta/TikTok/Google mỗi bên tự gán → tổng có thể > doanh thu Shopify). Bảng dưới: ROAS = Revenue(Shopify)/Spend theo chiều (blended).</p></div>`;
   document.getElementById('mMetric').addEventListener('click',e=>{if(e.target.tagName==='BUTTON'){S.metric=e.target.dataset.k;vMarketing();}});
   document.getElementById('mDim').addEventListener('click',e=>{if(e.target.tagName==='BUTTON'){S.dim=e.target.dataset.d;vMarketing();}});
   // trend: by date per channel
