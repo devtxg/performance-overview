@@ -16,9 +16,10 @@ select,input[type=date],input[type=number]{background:var(--surface2);color:var(
 .card .v{font-size:19px;font-weight:600;margin:0;color:var(--green)}
 .card .p{font-size:11px;color:var(--muted);margin:3px 0 0}
 .card .cmp{font-size:11px;font-weight:600;margin:4px 0 0}
-.card .cmp.up{color:var(--green)}
-.card .cmp.down{color:var(--red)}
-.card .cmp.flat{color:var(--muted)}
+.cmp.up{color:var(--green)}
+.cmp.down{color:var(--red)}
+.cmp.flat{color:var(--muted)}
+td .cmp{font-size:10px;font-weight:600;margin-left:5px}
 .cmpbox{display:inline-flex;align-items:center;gap:5px;color:var(--muted);font-size:13px;cursor:pointer;user-select:none}
 .cmpbox input{cursor:pointer;margin:0}
 .cmpbox.disabled{opacity:.4;cursor:not-allowed}
