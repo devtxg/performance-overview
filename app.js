@@ -247,6 +247,20 @@ function vMarketing() {
 }
 
 // ============ PRODUCT ============
+// Bảng top sản phẩm theo lượng bán (units) trong time range, kèm ảnh Shopify.
+function productSalesTable() {
+  if (!DATA.productSales) return '';
+  const r = rangeDates(), meta = DATA.productMeta || {}, agg = {};
+  DATA.productSales.forEach(s => { if (!r.has(s.d)) return; const g = agg[s.p] || (agg[s.p] = { u: 0, rev: 0 }); g.u += s.u; g.rev += s.rev; });
+  const list = Object.keys(agg).filter(p => agg[p].u > 0).sort((a, b) => agg[b].u - agg[a].u).slice(0, 50);
+  if (!list.length) return '';
+  const rows = list.map((p, i) => { const m = meta[p] || {};
+    const img = m.img ? `<img src="${m.img}" loading="lazy" style="width:38px;height:38px;object-fit:cover;border-radius:6px;background:var(--surface2)">`
+      : `<div style="width:38px;height:38px;border-radius:6px;background:var(--surface2)"></div>`;
+    return `<tr><td>${i + 1}</td><td>${img}</td><td style="white-space:normal;max-width:320px">${m.t || p}</td><td>${Math.round(agg[p].u).toLocaleString()}</td><td>${k$(agg[p].rev)}</td></tr>`; }).join('');
+  return `<div class="panel"><h3>Top sản phẩm theo lượng bán <span style="font-weight:400;color:var(--muted);font-size:11px">(theo time range · top 50 · units = SL bán)</span></h3>
+    <div class="scroll" style="max-height:560px;overflow:auto"><table><thead><tr><th>#</th><th>Ảnh</th><th>Sản phẩm</th><th>Units</th><th>Revenue</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
 function vProduct() {
   const fact = factFiltered();
   const recCol = { Papa:'#378ADD', Maman:'#D4537E', Mamie:'#1D9E75', Papy:'#EF9F27', 'Pet Lover':'#7F77DD', Other:'#8a93a8' };
@@ -285,7 +299,8 @@ function vProduct() {
       <div class="panel"><h3>Theo đối tượng (recipient)</h3>
         <div class="scroll"><table><thead><tr><th>Đối tượng</th><th>Main item bán</th><th>Revenue Share</th></tr></thead><tbody>${recRows}</tbody></table></div></div>
       <div class="panel"><h3>Recipient — revenue share</h3><div class="chartwrap"><canvas id="pDonut"></canvas></div></div>
-    </div>`;
+    </div>
+    ${productSalesTable()}`;
   document.getElementById('pRecMode').addEventListener('click',e=>{const b=e.target.closest('button');if(b){S.pRecMode=b.dataset.r;vProduct();}});
   destroyChart('pDonut');
   CH['pDonut']=new Chart(document.getElementById('pDonut'),{type:'doughnut',data:{labels:REC5,datasets:[{data:REC5.map(r=>Math.round(byRec[r].rev)),backgroundColor:REC5.map(r=>recCol[r]),borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#93a4c4',boxWidth:10,font:{size:11}}}}}});
