@@ -196,7 +196,8 @@ function vMarketing() {
   const prev = ps ? aggByAccount(DATA.ads.filter(a => a.channel === ch && ps.has(a.date))) : null;
   const ct = adMetrics(cur.tot), pt = prev ? adMetrics(prev.tot) : null;
 
-  const subnav = `<div class="seg" id="mktNav" style="margin-bottom:12px">${['Meta','Google','TikTok'].map(c => `<button data-c="${c}" class="${ch===c?'on':''}" style="color:${MKT_COL[c]}${ch===c?'':';opacity:.5'}">${c}</button>`).join('')}</div>`;
+  const MKT_CLS = { Meta: 'tab-meta', Google: 'tab-goog', TikTok: 'tab-tik' };
+  const subnav = `<div class="seg" id="mktNav" style="margin-bottom:12px">${['Meta','Google','TikTok'].map(c => `<button data-c="${c}" class="${MKT_CLS[c]}${ch===c?' on':''}"${ch===c?'':' style="opacity:.45"'}>${c}</button>`).join('')}</div>`;
   const tcard = (lab, key, fmt, opt) => `<div class="card"><p class="l">${lab}</p><p class="v">${fmt(ct[key])}</p>${pt ? deltaEl(ct[key], pt[key], opt, 'p') : ''}</div>`;
   const totals = `<div class="kpi">${MKT_CARDS[ch].map(c => tcard(c[0], c[1], c[2], c[3])).join('')}</div>`;
 
