@@ -193,13 +193,30 @@ function vOverview() {
   document.getElementById('ovT').textContent = title;
   lineChart('ovChart', labels, ds);
 }
+// Plugin vẽ số trên đỉnh các cột (bỏ qua đường ROAS).
+const ovBarValuePlugin = {
+  id: 'ovBarValue',
+  afterDatasetsDraw(chart) {
+    const ctx = chart.ctx; ctx.save();
+    ctx.font = '700 9px Inter, sans-serif'; ctx.textAlign = 'center';
+    chart.data.datasets.forEach((dsx, i) => {
+      if (dsx.type === 'line') return;
+      const meta = chart.getDatasetMeta(i); if (meta.hidden) return;
+      ctx.fillStyle = dsx.backgroundColor;
+      meta.data.forEach((bar, j) => { const v = dsx.data[j]; if (v == null) return;
+        const txt = Math.abs(v) >= 1000 ? '$' + (v / 1000).toFixed(1) + 'k' : '$' + Math.round(v);
+        ctx.fillText(txt, bar.x, (v < 0 ? bar.y + 11 : bar.y - 4)); });
+    });
+    ctx.restore();
+  }
+};
 // Combo: cột nhóm (trục trái $) + đường ROAS (trục phải 1–5).
 function ovComboChart(id, labels, bars, roas) {
   destroyChart(id);
-  const ds = bars.map(b => ({ label: b.label, data: b.data, backgroundColor: b.color, borderRadius: 3, maxBarThickness: 22, yAxisID: 'y' }));
+  const ds = bars.map(b => ({ label: b.label, data: b.data, backgroundColor: b.color, borderRadius: 3, categoryPercentage: 0.86, barPercentage: 0.97, yAxisID: 'y' }));
   ds.push({ type: 'line', label: 'ROAS', data: roas, borderColor: '#f97316', backgroundColor: '#f97316', borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#f97316', tension: .3, yAxisID: 'y1', spanGaps: true });
-  CH[id] = new Chart(document.getElementById(id), { type: 'bar', data: { labels, datasets: ds },
-    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+  CH[id] = new Chart(document.getElementById(id), { type: 'bar', data: { labels, datasets: ds }, plugins: [ovBarValuePlugin],
+    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, layout: { padding: { top: 14 } },
       plugins: { legend: { labels: { color: CH_LABEL, boxWidth: 12, font: { size: 11 }, usePointStyle: true } } },
       scales: {
         y: { position: 'left', beginAtZero: true, ticks: { color: CH_LABEL, font: { size: 10 }, callback: v => Math.abs(v) >= 1000 ? '$' + (v/1000).toFixed(0) + 'k' : '$' + v }, grid: { color: CH_GRID } },
