@@ -252,14 +252,14 @@ function productSalesTable() {
   if (!DATA.productSales) return '';
   const r = rangeDates(), meta = DATA.productMeta || {}, agg = {};
   DATA.productSales.forEach(s => { if (!r.has(s.d)) return; const g = agg[s.p] || (agg[s.p] = { u: 0, rev: 0 }); g.u += s.u; g.rev += s.rev; });
-  const list = Object.keys(agg).filter(p => agg[p].u > 0).sort((a, b) => agg[b].u - agg[a].u).slice(0, 50);
+  const list = Object.keys(agg).filter(p => agg[p].u > 0 && !(meta[p] && meta[p].sub)).sort((a, b) => agg[b].u - agg[a].u).slice(0, 50);   // bỏ sản phẩm phụ (add-on)
   if (!list.length) return '';
   const rows = list.map((p, i) => { const m = meta[p] || {};
     const img = m.img ? `<img src="${m.img}" loading="lazy" style="width:38px;height:38px;object-fit:cover;border-radius:6px;background:var(--surface2)">`
       : `<div style="width:38px;height:38px;border-radius:6px;background:var(--surface2)"></div>`;
-    return `<tr><td>${i + 1}</td><td>${img}</td><td style="white-space:normal;max-width:320px">${m.t || p}</td><td>${Math.round(agg[p].u).toLocaleString()}</td><td>${k$(agg[p].rev)}</td></tr>`; }).join('');
-  return `<div class="panel"><h3>Top sản phẩm theo lượng bán <span style="font-weight:400;color:var(--muted);font-size:11px">(theo time range · top 50 · units = SL bán)</span></h3>
-    <div class="scroll" style="max-height:560px;overflow:auto"><table><thead><tr><th>#</th><th>Ảnh</th><th>Sản phẩm</th><th>Units</th><th>Revenue</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    return `<tr><td>${i + 1}</td><td>${img}</td><td style="text-align:left;white-space:normal;max-width:340px">${m.t || p}</td><td>${Math.round(agg[p].u).toLocaleString()}</td><td>${k$(agg[p].rev)}</td></tr>`; }).join('');
+  return `<div class="panel"><h3>Top sản phẩm theo lượng bán <span style="font-weight:400;color:var(--muted);font-size:11px">(theo time range · main item · top 50)</span></h3>
+    <div class="scroll" style="max-height:560px;overflow:auto"><table><thead><tr><th>#</th><th>Ảnh</th><th style="text-align:left">Sản phẩm</th><th>Units</th><th>Revenue</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 function vProduct() {
   const fact = factFiltered();
