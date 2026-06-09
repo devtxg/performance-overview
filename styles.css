@@ -39,6 +39,7 @@ tbody tr:hover{background:var(--surface2)}
 .neg{color:var(--red)}
 .prov{color:var(--amber)}
 .chartwrap{position:relative;height:240px}
+.chartwrap.r4{height:auto;aspect-ratio:4 / 1;min-height:260px}
 .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
 .fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px 16px;margin-bottom:14px}
 .fld label{font-size:12px;color:var(--muted);display:block;margin-bottom:5px}
