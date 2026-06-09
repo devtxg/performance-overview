@@ -31,6 +31,9 @@ main{padding:0 16px 40px}
 .seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
 .seg button{background:transparent;border:none;color:var(--muted);padding:5px 12px;font-size:12px;cursor:pointer}
 .seg button.on{background:var(--surface2);color:var(--text)}
+#mktNav{border-color:var(--border)}
+#mktNav button{padding:9px 24px;font-size:15px;font-weight:600}
+#mktNav button.on{color:var(--text)}
 table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}
 th,td{padding:7px 9px;text-align:right;border-bottom:1px solid var(--border)}
 th:first-child,td:first-child{text-align:left}
