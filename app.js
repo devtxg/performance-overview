@@ -7,6 +7,7 @@ const usd2 = n => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigit
 const k$ = n => Math.abs(n) >= 1000 ? '$' + (n / 1000).toFixed(1) + 'k' : '$' + Math.round(n);
 const sum = (a, f) => a.reduce((s, x) => s + (f ? f(x) : x), 0);
 function destroyChart(id) { if (CH[id]) { CH[id].destroy(); delete CH[id]; } }
+const CH_LABEL = '#6b7280', CH_GRID = '#e9ebf0', CH_GRID2 = '#eef0f4';   // màu nhãn/lưới Chart.js (light theme)
 // ----- date helpers (local calendar) -----
 const ymdLocal = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 const yestStr = () => { const d = new Date(); d.setDate(d.getDate() - 1); return ymdLocal(d); };
@@ -303,7 +304,7 @@ function vProduct() {
     ${productSalesTable()}`;
   document.getElementById('pRecMode').addEventListener('click',e=>{const b=e.target.closest('button');if(b){S.pRecMode=b.dataset.r;vProduct();}});
   destroyChart('pDonut');
-  CH['pDonut']=new Chart(document.getElementById('pDonut'),{type:'doughnut',data:{labels:REC5,datasets:[{data:REC5.map(r=>Math.round(byRec[r].rev)),backgroundColor:REC5.map(r=>recCol[r]),borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#93a4c4',boxWidth:10,font:{size:11}}}}}});
+  CH['pDonut']=new Chart(document.getElementById('pDonut'),{type:'doughnut',data:{labels:REC5,datasets:[{data:REC5.map(r=>Math.round(byRec[r].rev)),backgroundColor:REC5.map(r=>recCol[r]),borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:CH_LABEL,boxWidth:10,font:{size:11}}}}}});
   const dates=[...new Set(fact.map(r=>r.Date))].sort();
   const series=rec=>dates.map(d=>sum(fact.filter(r=>r.Date===d&&r.Recipient===rec),r=>r.Revenue));
   const allRec={}; fact.forEach(r=>allRec[r.Recipient]=(allRec[r.Recipient]||0)+r.Revenue);
@@ -435,9 +436,9 @@ function fcLineChart(id, labels, datasets, markers) {
       ctx.fillStyle = '#D4537E'; ctx.font = '9px Inter,sans-serif'; ctx.fillText(m.label, px + 3, top + 9); }); ctx.restore(); } };
   CH[id] = new Chart(document.getElementById(id), { type: 'line', data: { labels, datasets }, plugins: [mk],
     options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
-      plugins: { legend: { labels: { color: '#93a4c4', boxWidth: 12, font: { size: 11 }, usePointStyle: true } } },
-      scales: { y: { ticks: { color: '#93a4c4', font: { size: 10 }, callback: v => Math.abs(v) >= 1000 ? '$' + (v/1000).toFixed(0) + 'k' : v }, grid: { color: '#243154' } },
-                x: { ticks: { color: '#93a4c4', font: { size: 9 }, maxTicksLimit: 10 }, grid: { color: '#1a2540' } } } } });
+      plugins: { legend: { labels: { color: CH_LABEL, boxWidth: 12, font: { size: 11 }, usePointStyle: true } } },
+      scales: { y: { ticks: { color: CH_LABEL, font: { size: 10 }, callback: v => Math.abs(v) >= 1000 ? '$' + (v/1000).toFixed(0) + 'k' : v }, grid: { color: CH_GRID } },
+                x: { ticks: { color: CH_LABEL, font: { size: 9 }, maxTicksLimit: 10 }, grid: { color: CH_GRID2 } } } } });
 }
 
 // ----- chart helper (dark theme) -----
@@ -445,7 +446,7 @@ function lineChart(id, labels, datasets) {
   destroyChart(id);
   CH[id] = new Chart(document.getElementById(id), { type: 'line', data: { labels, datasets },
     options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
-      plugins: { legend: { labels: { color: '#93a4c4', boxWidth: 12, font: { size: 11 }, usePointStyle: true } } },
-      scales: { y: { ticks: { color: '#93a4c4', font: { size: 10 }, callback: v => Math.abs(v) >= 1000 ? '$' + (v/1000).toFixed(0) + 'k' : v }, grid: { color: '#243154' } },
-                x: { ticks: { color: '#93a4c4', font: { size: 9 }, maxTicksLimit: 9 }, grid: { color: '#1a2540' } } } } });
+      plugins: { legend: { labels: { color: CH_LABEL, boxWidth: 12, font: { size: 11 }, usePointStyle: true } } },
+      scales: { y: { ticks: { color: CH_LABEL, font: { size: 10 }, callback: v => Math.abs(v) >= 1000 ? '$' + (v/1000).toFixed(0) + 'k' : v }, grid: { color: CH_GRID } },
+                x: { ticks: { color: CH_LABEL, font: { size: 9 }, maxTicksLimit: 9 }, grid: { color: CH_GRID2 } } } } });
 }
