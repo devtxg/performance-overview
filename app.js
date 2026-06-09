@@ -172,7 +172,7 @@ function aggByAccount(arr) {
     tot.spend += a.spend; tot.clicks += a.clicks; tot.impr += a.impressions; tot.rev += a.platformRevenue; });
   return { by, tot };
 }
-const adMetrics = g => ({ spend: g.spend, cpc: g.clicks ? g.spend / g.clicks : 0, cpm: g.impr ? g.spend / g.impr * 1000 : 0, roas: g.spend ? g.rev / g.spend : 0 });
+const adMetrics = g => ({ spend: g.spend, cpc: g.clicks ? g.spend / g.clicks : 0, cpm: g.impr ? g.spend / g.impr * 1000 : 0, roas: g.spend ? g.rev / g.spend : 0, impr: g.impr, ctr: g.impr ? g.clicks / g.impr * 100 : 0 });
 // Δ% vs kỳ trước. opt.invert: thấp hơn = tốt (CPC/CPM → giảm xanh); opt.neutral: không phán xét (spend).
 function deltaEl(cur, prev, opt, tag) {
   tag = tag || 'span'; if (prev == null) return '';
@@ -184,7 +184,13 @@ function deltaEl(cur, prev, opt, tag) {
       cls = good === null ? 'flat' : good ? 'up' : 'down'; txt = (up ? '▲' : '▼') + ' ' + Math.abs(pct).toFixed(1) + '%'; } }
   return `<${tag} class="cmp ${cls}">${txt}</${tag}>`;
 }
-const fM2 = v => '$' + v.toFixed(2), fRoas = v => v.toFixed(2) + 'x';
+const fM2 = v => '$' + v.toFixed(2), fRoas = v => v.toFixed(2) + 'x', fInt = v => Math.round(v).toLocaleString(), fPct = v => v.toFixed(2) + '%';
+// Card tổng theo nền tảng: [label, metricKey, format, deltaOpt]. invert: thấp=tốt; neutral: không phán xét.
+const MKT_CARDS = {
+  Meta:   [['Amount spent','spend',usd2,{neutral:1}], ['CPC','cpc',fM2,{invert:1}], ['CPM','cpm',fM2,{invert:1}], ['ROAS','roas',fRoas,{}]],
+  Google: [['Cost','spend',usd2,{neutral:1}], ['Impressions','impr',fInt,{neutral:1}], ['CTR','ctr',fPct,{}], ['CPC','cpc',fM2,{invert:1}], ['ROAS','roas',fRoas,{}]],
+  TikTok: [['Amount spent','spend',usd2,{neutral:1}], ['CPC','cpc',fM2,{invert:1}], ['CPM','cpm',fM2,{invert:1}], ['ROAS','roas',fRoas,{}]]
+};
 
 function vMarketing() {
   const ch = S.mkt || (S.mkt = 'Meta');
@@ -195,7 +201,7 @@ function vMarketing() {
 
   const subnav = `<div class="seg" id="mktNav" style="margin-bottom:12px">${['Meta','Google','TikTok'].map(c => `<button data-c="${c}" class="${ch===c?'on':''}">${c}</button>`).join('')}</div>`;
   const tcard = (lab, key, fmt, opt) => `<div class="card"><p class="l">${lab}</p><p class="v">${fmt(ct[key])}</p>${pt ? deltaEl(ct[key], pt[key], opt, 'p') : ''}</div>`;
-  const totals = `<div class="kpi">${tcard('Amount spent','spend',usd2,{neutral:1})}${tcard('CPC','cpc',fM2,{invert:1})}${tcard('CPM','cpm',fM2,{invert:1})}${tcard('ROAS','roas',fRoas,{})}</div>`;
+  const totals = `<div class="kpi">${MKT_CARDS[ch].map(c => tcard(c[0], c[1], c[2], c[3])).join('')}</div>`;
 
   // Theo tài khoản — chỉ Meta (nhiều account). Account spend>0 mới hiện.
   let acctPanel = '';
