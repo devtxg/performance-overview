@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Koccie Dashboard</title>
-  <link rel="stylesheet" href="./styles.css">
+  <script>document.write('<link rel="stylesheet" href="./styles.css?_=' + Date.now() + '">');</script>   <!-- cache-bust: luôn lấy CSS mới -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -34,6 +34,6 @@
   <div id="kpi"></div>
   <main id="view"></main>
 
-  <script src="./app.js"></script>
+  <script>document.write('<script src="./app.js?_=' + Date.now() + '"><\/script>');</script>   <!-- cache-bust: luôn lấy app.js mới -->
 </body>
 </html>
