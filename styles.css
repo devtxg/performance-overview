@@ -47,6 +47,8 @@ th:first-child,td:first-child{text-align:left}
 th{color:var(--muted);font-weight:600}
 tbody tr:hover{background:var(--surface2)}
 .scroll{overflow-x:auto;border:1px solid var(--border);border-radius:10px}
+.scrollv{max-height:480px;overflow-y:auto}                                  /* ~14 ngày rồi scroll dọc */
+.scrollv thead th{position:sticky;top:0;background:var(--surface);z-index:1}  /* header dính khi cuộn */
 .neg{color:var(--red)}
 .prov{color:var(--amber)}
 .chartwrap{position:relative;height:240px}
