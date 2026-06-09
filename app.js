@@ -138,8 +138,14 @@ function renderKPI() {
   if (S.tab === 'overview') {
     const cum = sum(DATA.overview.filter(o => o.date >= '2026-03-29' && o.date <= '2026-06-21'), o => o.profit);
     const pct = cum / 60000 * 100;
-    goalBar = `<div class="goal"><div class="goalbar"><span style="width:${Math.max(0, Math.min(100, pct)).toFixed(1)}%"></span></div>`
-      + `<p class="goalt">${pct.toFixed(0)}% mục tiêu · ${k$(cum)} / $60k <span style="color:var(--muted);font-weight:400">(29/3–21/6)</span></p></div>`;
+    const arc = Math.max(0, Math.min(100, pct));
+    goalBar = `<div class="gaugewrap">
+      <svg viewBox="0 0 100 58" class="gauge">
+        <path class="gbg" d="M8 52 A42 42 0 0 1 92 52"/>
+        <path class="gfg" pathLength="100" d="M8 52 A42 42 0 0 1 92 52" style="stroke-dashoffset:${100 - arc}"/>
+        <text x="50" y="47" text-anchor="middle" class="gtxt">${pct.toFixed(0)}%</text>
+      </svg>
+      <p class="goalt" style="text-align:center">${k$(cum)} / $60k mục tiêu <span style="color:var(--muted);font-weight:400">(29/3–21/6)</span></p></div>`;
   }
   const cardHtml = arr => arr.map(([label, key, fmt, subFn]) => {
     const sub = subFn ? subFn(cur) : '';
