@@ -194,7 +194,7 @@ function vMarketing() {
   const ct = adMetrics(cur.tot), pt = prev ? adMetrics(prev.tot) : null;
 
   const subnav = `<div class="seg" id="mktNav" style="margin-bottom:12px">${['Meta','Google','TikTok'].map(c => `<button data-c="${c}" class="${ch===c?'on':''}">${c}</button>`).join('')}</div>`;
-  const tcard = (lab, key, fmt, opt) => `<div class="card"><p class="l">Tổng ${ch} · ${lab}</p><p class="v">${fmt(ct[key])}</p>${pt ? deltaEl(ct[key], pt[key], opt, 'p') : ''}</div>`;
+  const tcard = (lab, key, fmt, opt) => `<div class="card"><p class="l">${lab}</p><p class="v">${fmt(ct[key])}</p>${pt ? deltaEl(ct[key], pt[key], opt, 'p') : ''}</div>`;
   const totals = `<div class="kpi">${tcard('Amount spent','spend',usd2,{neutral:1})}${tcard('CPC','cpc',fM2,{invert:1})}${tcard('CPM','cpm',fM2,{invert:1})}${tcard('ROAS','roas',fRoas,{})}</div>`;
 
   // Theo tài khoản — chỉ Meta (nhiều account). Account spend>0 mới hiện.
