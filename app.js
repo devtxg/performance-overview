@@ -150,7 +150,9 @@ function renderKPI() {
   const cardHtml = arr => arr.map(([label, key, fmt, subFn]) => {
     const sub = subFn ? subFn(cur) : '';
     const cmp = prev ? deltaHtml(cur[key], prev[key]) : '';
-    return `<div class="card"><p class="l">${label}</p><p class="v">${fmt(cur[key])}</p>${sub ? `<p class="p">${sub}</p>` : ''}${cmp}${key === 'net' ? goalBar : ''}</div>`;
+    const body = `<p class="l">${label}</p><p class="v">${fmt(cur[key])}</p>${sub ? `<p class="p">${sub}</p>` : ''}${cmp}`;
+    if (key === 'net' && goalBar) return `<div class="card cardhi"><div class="cardL">${body}</div>${goalBar}</div>`;
+    return `<div class="card">${body}</div>`;
   }).join('');
   document.getElementById('kpi').innerHTML = S.tab === 'marketing'
     ? `<div class="kpi">${cardHtml(core)}</div><div class="kpi krow2">${cardHtml(detail)}</div>`
