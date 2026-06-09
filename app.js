@@ -159,7 +159,11 @@ function vOverview() {
 }
 
 // ============ MARKETING ============
-const MKT_COL = { Meta: '#0866FF', Google: '#34A853', TikTok: '#25F4EE' };   // màu brand từng nền tảng (tab + chart)
+const MKT_COL = { Meta: '#0866FF', Google: '#34A853', TikTok: '#25F4EE' };   // màu brand từng nền tảng (chart line)
+// Label tab phối màu từng chữ giống logo. Google: G-o-o-g-l-e; TikTok: glitch cyan/hồng (class .ttk).
+const GOOGLE_LETTERS = [['G','#4285F4'],['o','#EA4335'],['o','#FBBC05'],['g','#4285F4'],['l','#34A853'],['e','#EA4335']];
+const mktTabLabel = c => c === 'Google' ? GOOGLE_LETTERS.map(([l, col]) => `<span style="color:${col}">${l}</span>`).join('')
+  : c === 'TikTok' ? '<span class="ttk">TikTok</span>' : c;
 // Gom ads theo account + tổng (spend/clicks/impr/platformRevenue).
 function aggByAccount(arr) {
   const by = {}, tot = { spend: 0, clicks: 0, impr: 0, rev: 0 };
@@ -197,7 +201,7 @@ function vMarketing() {
   const ct = adMetrics(cur.tot), pt = prev ? adMetrics(prev.tot) : null;
 
   const MKT_CLS = { Meta: 'tab-meta', Google: 'tab-goog', TikTok: 'tab-tik' };
-  const subnav = `<div class="seg" id="mktNav" style="margin-bottom:12px">${['Meta','Google','TikTok'].map(c => `<button data-c="${c}" class="${MKT_CLS[c]}${ch===c?' on':''}"${ch===c?'':' style="opacity:.45"'}>${c}</button>`).join('')}</div>`;
+  const subnav = `<div class="seg" id="mktNav" style="margin-bottom:12px">${['Meta','Google','TikTok'].map(c => `<button data-c="${c}" class="${MKT_CLS[c]}${ch===c?' on':''}"${ch===c?'':' style="opacity:.45"'}>${mktTabLabel(c)}</button>`).join('')}</div>`;
   const tcard = (lab, key, fmt, opt) => `<div class="card"><p class="l">${lab}</p><p class="v">${fmt(ct[key])}</p>${pt ? deltaEl(ct[key], pt[key], opt, 'p') : ''}</div>`;
   const totals = `<div class="kpi">${MKT_CARDS[ch].map(c => tcard(c[0], c[1], c[2], c[3])).join('')}</div>`;
 
