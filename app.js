@@ -1,6 +1,6 @@
 /* Koccie Dashboard v1 — đọc ./data.json, render 5 tab client-side. */
 let DATA = null, CH = {};
-const S = { tab: 'overview', range: 'all', cFrom: '', cTo: '', mode: 'daily', metric: 'spend', dim: 'market', pMarket: 'all', compare: false };
+const S = { tab: 'overview', range: 'all', cFrom: '', cTo: '', mode: 'daily', metric: 'spend', dim: 'market', pMarket: 'all', compare: false, mkt: 'Meta' };
 
 const usd = n => '$' + (Math.round(n)).toLocaleString('en-US');
 const usd2 = n => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -162,34 +162,66 @@ function vOverview() {
 }
 
 // ============ MARKETING ============
+const MKT_COL = { Meta: '#378ADD', Google: '#1D9E75', TikTok: '#EF9F27' };
+// Gom ads theo account + tổng (spend/clicks/impr/platformRevenue).
+function aggByAccount(arr) {
+  const by = {}, tot = { spend: 0, clicks: 0, impr: 0, rev: 0 };
+  arr.forEach(a => { const k = a.account || '(no account)';
+    const g = by[k] || (by[k] = { spend: 0, clicks: 0, impr: 0, rev: 0 });
+    g.spend += a.spend; g.clicks += a.clicks; g.impr += a.impressions; g.rev += a.platformRevenue;
+    tot.spend += a.spend; tot.clicks += a.clicks; tot.impr += a.impressions; tot.rev += a.platformRevenue; });
+  return { by, tot };
+}
+const adMetrics = g => ({ spend: g.spend, cpc: g.clicks ? g.spend / g.clicks : 0, cpm: g.impr ? g.spend / g.impr * 1000 : 0, roas: g.spend ? g.rev / g.spend : 0 });
+// Δ% vs kỳ trước. opt.invert: thấp hơn = tốt (CPC/CPM → giảm xanh); opt.neutral: không phán xét (spend).
+function deltaEl(cur, prev, opt, tag) {
+  tag = tag || 'span'; if (prev == null) return '';
+  let cls, txt;
+  if (prev === 0) { if (!cur) return ''; cls = opt && opt.neutral ? 'flat' : 'up'; txt = '▲ new'; }
+  else { const pct = (cur - prev) / Math.abs(prev) * 100;
+    if (Math.abs(pct) < 0.05) { cls = 'flat'; txt = '—'; }
+    else { const up = cur > prev, good = opt && opt.neutral ? null : (opt && opt.invert ? !up : up);
+      cls = good === null ? 'flat' : good ? 'up' : 'down'; txt = (up ? '▲' : '▼') + ' ' + Math.abs(pct).toFixed(1) + '%'; } }
+  return `<${tag} class="cmp ${cls}">${txt}</${tag}>`;
+}
+const fM2 = v => '$' + v.toFixed(2), fRoas = v => v.toFixed(2) + 'x';
+
 function vMarketing() {
-  const ads = adsFiltered(), fact = factFiltered();
-  const chans = ['Meta','Google','TikTok'].map(ch => { const a = ads.filter(x=>x.channel===ch);
-    const sp=sum(a,x=>x.spend), cl=sum(a,x=>x.clicks), im=sum(a,x=>x.impressions), pr=sum(a,x=>x.platformRevenue);
-    return { ch, sp, pr, roas: sp?pr/sp:0, cpc: cl?sp/cl:0, cpm: im?sp/im*1000:0 }; });
-  const dimKey = { market:'Market', recipient:'Recipient', type:'Product Type' }[S.dim];
-  const agg = {}; fact.forEach(r => { const key=r[dimKey]; agg[key]=agg[key]||{sp:0,rev:0,or:0}; agg[key].sp+=r['Total Ads Spend']; agg[key].rev+=r.Revenue; agg[key].or+=r.Orders; });
-  document.getElementById('view').innerHTML = `
-    <div class="kpi">${chans.map(c=>`<div class="card"><p class="l">${c.ch} · ROAS</p><p class="v" style="color:${c.roas>=1?'var(--green)':'var(--red)'}">${c.roas.toFixed(2)}x</p><p class="p">Spend ${usd(c.sp)} → Rev ${usd(c.pr)}</p><p class="p">CPC $${c.cpc.toFixed(2)} · CPM $${c.cpm.toFixed(2)}</p></div>`).join('')}</div>
-    <div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="margin:0">Trend theo kênh</h3>
-      <span class="seg" id="mMetric">${['spend','cpc','cpm','roas'].map(m=>`<button data-k="${m}" class="${S.metric===m?'on':''}">${m.toUpperCase()}</button>`).join('')}</span></div>
-      <div class="chartwrap"><canvas id="mChart"></canvas></div></div>
-    <div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="margin:0">Hiệu quả theo chiều</h3>
-      <span class="seg" id="mDim">${[['market','Market'],['recipient','Recipient'],['type','Product Type']].map(d=>`<button data-d="${d[0]}" class="${S.dim===d[0]?'on':''}">${d[1]}</button>`).join('')}</span></div>
-      <div class="scroll"><table><thead><tr><th>${dimKey}</th><th>Spend</th><th>Revenue</th><th>ROAS</th><th>CPA</th><th>AOV</th><th>Orders</th></tr></thead><tbody>${
-        Object.keys(agg).sort((a,b)=>agg[b].rev-agg[a].rev).map(k=>{const x=agg[k];return `<tr><td>${k}</td><td>${k$(x.sp)}</td><td>${k$(x.rev)}</td><td>${(x.rev/x.sp||0).toFixed(2)}x</td><td>$${(x.sp/x.or||0).toFixed(1)}</td><td>$${(x.rev/x.or||0).toFixed(0)}</td><td>${x.or}</td></tr>`;}).join('')
-      }</tbody></table></div>
-      <p class="note">Thẻ kênh: <b>ROAS platform tự báo</b> = Revenue nền tảng đó gán / Spend kênh đó (Meta/TikTok/Google mỗi bên tự gán → tổng có thể > doanh thu Shopify). Bảng dưới: ROAS = Revenue(Shopify)/Spend theo chiều (blended).</p></div>`;
-  document.getElementById('mMetric').addEventListener('click',e=>{if(e.target.tagName==='BUTTON'){S.metric=e.target.dataset.k;vMarketing();}});
-  document.getElementById('mDim').addEventListener('click',e=>{if(e.target.tagName==='BUTTON'){S.dim=e.target.dataset.d;vMarketing();}});
-  // trend: by date per channel
-  const dates=[...new Set(ads.map(a=>a.date))].sort();
-  const col={Meta:'#378ADD',Google:'#1D9E75',TikTok:'#EF9F27'};
-  const ds=['Meta','Google','TikTok'].map(ch=>{ const data=dates.map(d=>{const a=ads.filter(x=>x.channel===ch&&x.date===d);
-    const sp=sum(a,x=>x.spend),cl=sum(a,x=>x.clicks),im=sum(a,x=>x.impressions),pr=sum(a,x=>x.platformRevenue);
-    return S.metric==='spend'?sp:S.metric==='cpc'?(cl?sp/cl:0):S.metric==='cpm'?(im?sp/im*1000:0):(sp?pr/sp:0); });
-    return {label:ch,data,borderColor:col[ch],backgroundColor:col[ch],pointRadius:0,borderWidth:2,tension:.3}; });
-  lineChart('mChart',dates,ds);
+  const ch = S.mkt || (S.mkt = 'Meta');
+  const cur = aggByAccount(adsFiltered().filter(a => a.channel === ch));
+  const ps = prevDatesSet();   // kỳ trước cùng độ dài (null nếu range='all')
+  const prev = ps ? aggByAccount(DATA.ads.filter(a => a.channel === ch && ps.has(a.date))) : null;
+  const ct = adMetrics(cur.tot), pt = prev ? adMetrics(prev.tot) : null;
+
+  const subnav = `<div class="seg" id="mktNav" style="margin-bottom:12px">${['Meta','Google','TikTok'].map(c => `<button data-c="${c}" class="${ch===c?'on':''}">${c}</button>`).join('')}</div>`;
+  const tcard = (lab, key, fmt, opt) => `<div class="card"><p class="l">Tổng ${ch} · ${lab}</p><p class="v">${fmt(ct[key])}</p>${pt ? deltaEl(ct[key], pt[key], opt, 'p') : ''}</div>`;
+  const totals = `<div class="kpi">${tcard('Amount spent','spend',usd2,{neutral:1})}${tcard('CPC','cpc',fM2,{invert:1})}${tcard('CPM','cpm',fM2,{invert:1})}${tcard('ROAS','roas',fRoas,{})}</div>`;
+
+  // Theo tài khoản — chỉ Meta (nhiều account). Account spend>0 mới hiện.
+  let acctPanel = '';
+  if (ch === 'Meta') {
+    const accts = Object.keys(cur.by).filter(a => cur.by[a].spend > 0).sort((a, b) => cur.by[b].spend - cur.by[a].spend);
+    const cell = (m, pm, key, fmt, opt) => `<td>${fmt(m[key])}${pm ? ' ' + deltaEl(m[key], pm[key], opt, 'span') : ''}</td>`;
+    const rows = accts.map(a => { const m = adMetrics(cur.by[a]), pm = prev && prev.by[a] ? adMetrics(prev.by[a]) : null;
+      return `<tr><td>${a}</td>${cell(m,pm,'spend',usd2,{neutral:1})}${cell(m,pm,'cpc',fM2,{invert:1})}${cell(m,pm,'cpm',fM2,{invert:1})}${cell(m,pm,'roas',fRoas,{})}</tr>`; }).join('');
+    acctPanel = `<div class="panel"><h3>Theo tài khoản <span style="font-weight:400;color:var(--muted);font-size:11px">(spend > 0${pt ? ' · Δ vs kỳ trước cùng độ dài' : ''})</span></h3>
+      <div class="scroll"><table><thead><tr><th>Tài khoản</th><th>Amount spent</th><th>CPC</th><th>CPM</th><th>ROAS</th></tr></thead><tbody>${rows || '<tr><td colspan="5" style="color:var(--muted)">Không có tài khoản nào có spend trong kỳ.</td></tr>'}</tbody></table></div></div>`;
+  }
+
+  const trend = `<div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="margin:0">Trend ${ch}</h3>
+      <span class="seg" id="mMetric">${['spend','cpc','cpm','roas'].map(m => `<button data-k="${m}" class="${S.metric===m?'on':''}">${m.toUpperCase()}</button>`).join('')}</span></div>
+      <div class="chartwrap r4"><canvas id="mChart"></canvas></div></div>`;
+
+  document.getElementById('view').innerHTML = subnav + totals + acctPanel + trend;
+  document.getElementById('mktNav').addEventListener('click', e => { if (e.target.tagName === 'BUTTON') { S.mkt = e.target.dataset.c; vMarketing(); } });
+  document.getElementById('mMetric').addEventListener('click', e => { if (e.target.tagName === 'BUTTON') { S.metric = e.target.dataset.k; vMarketing(); } });
+
+  // Trend chart — chỉ kênh đang chọn.
+  const cAds = adsFiltered().filter(a => a.channel === ch);
+  const dates = [...new Set(cAds.map(a => a.date))].sort();
+  const data = dates.map(d => { const m = adMetrics(aggByAccount(cAds.filter(x => x.date === d)).tot);
+    return S.metric === 'spend' ? m.spend : S.metric === 'cpc' ? m.cpc : S.metric === 'cpm' ? m.cpm : m.roas; });
+  lineChart('mChart', dates, [{ label: ch, data, borderColor: MKT_COL[ch], backgroundColor: MKT_COL[ch], pointRadius: 0, borderWidth: 2, tension: .3 }]);
 }
 
 // ============ PRODUCT ============
