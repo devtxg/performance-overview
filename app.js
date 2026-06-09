@@ -102,18 +102,22 @@ function renderKPI() {
   const cur = kpiVals(ovFiltered());
   let prev = null;
   if (S.compare && S.range !== 'all') { const ps = prevDatesSet(); if (ps && ps.size) prev = kpiVals(DATA.overview.filter(o => ps.has(o.date))); }
-  const defs = [
+  // Overview (+ tab khác): 4 card cốt lõi. Marketing: các chỉ số chi tiết kênh/chi phí.
+  const core = [
     ['Total Orders', 'orders', v => v.toLocaleString(), null],
     ['Total Sales', 'sales', usd2, null],
     ['Total Ads Spend', 'ads', usd2, c => (c.ads / c.sales * 100 || 0).toFixed(1) + '% of sales'],
+    ['Net Profit', 'net', usd2, c => (c.net / c.sales * 100 || 0).toFixed(1) + '% of sales']
+  ];
+  const marketing = [
     ['FB Ads', 'fb', usd2, c => (c.fb / c.ads * 100 || 0).toFixed(1) + '% of ads'],
     ['Google Ads', 'gg', usd2, c => (c.gg / c.ads * 100 || 0).toFixed(1) + '% of ads'],
     ['AOV', 'aov', usd2, null],
     ['ROAS', 'roas', v => v.toFixed(2) + 'x', null],
-    ['API Cost', 'api', usd2, c => (c.api / c.sales * 100 || 0).toFixed(1) + '%'],
-    ['Fulfill Cost', 'ful', usd2, c => (c.ful / c.sales * 100 || 0).toFixed(1) + '%'],
-    ['Net Profit', 'net', usd2, null]
+    ['API Cost', 'api', usd2, c => (c.api / c.sales * 100 || 0).toFixed(1) + '% of sales'],
+    ['Fulfill Cost', 'ful', usd2, c => (c.ful / c.sales * 100 || 0).toFixed(1) + '% of sales']
   ];
+  const defs = S.tab === 'marketing' ? marketing : core;
   document.getElementById('kpi').innerHTML = defs.map(([label, key, fmt, subFn]) => {
     const sub = subFn ? subFn(cur) : '';
     const cmp = prev ? deltaHtml(cur[key], prev[key]) : '';
@@ -136,7 +140,7 @@ function vOverview() {
     <div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <h3 style="margin:0" id="ovT">Daily Performance</h3>
       <span class="seg" id="ovMode"><button data-m="daily" class="${S.mode==='daily'?'on':''}">Daily</button><button data-m="cum" class="${S.mode==='cum'?'on':''}">Lũy kế YTD</button></span></div>
-      <div class="chartwrap"><canvas id="ovChart"></canvas></div></div>
+      <div class="chartwrap r4"><canvas id="ovChart"></canvas></div></div>
     <div class="panel"><h3>Daily data <span style="font-weight:400;color:var(--muted);font-size:11px">(3 cột cuối = lũy kế từ ${DATA.fromDate})</span></h3>
       <div class="scroll"><table><thead><tr><th>Date</th><th>Orders</th><th>Sales</th><th>Total Ads</th><th>FB</th><th>Google</th><th>TikTok</th><th>API</th><th>Fulfill</th><th>Net Profit</th><th>Σ Revenue</th><th>Σ Spend</th><th>Σ Net Profit</th></tr></thead><tbody>${
         rows.map(o => { const c = cum[o.date] || {}; const pv = lastDates.indexOf(o.date) >= 0;
