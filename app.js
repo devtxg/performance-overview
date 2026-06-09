@@ -86,8 +86,8 @@ const adsFiltered = () => { const r = rangeDates(); return DATA.ads.filter(o => 
 // ===== KPI strip (mọi tab) =====
 function kpiVals(ov) {
   const sales = sum(ov, o => o.revenue), ads = sum(ov, o => o.totalAds), orders = sum(ov, o => o.orders);
-  const fb = sum(ov, o => o.meta), gg = sum(ov, o => o.google), api = sum(ov, o => o.api), ful = sum(ov, o => o.fulfill), net = sum(ov, o => o.profit);
-  return { orders, sales, ads, fb, gg, aov: sales / orders || 0, roas: sales / ads || 0, api, ful, net };
+  const fb = sum(ov, o => o.meta), gg = sum(ov, o => o.google), tk = sum(ov, o => o.tiktok), api = sum(ov, o => o.api), ful = sum(ov, o => o.fulfill), net = sum(ov, o => o.profit);
+  return { orders, sales, ads, fb, gg, tk, aov: sales / orders || 0, roas: sales / ads || 0, api, ful, net };
 }
 // % thay đổi vs kỳ trước → ▲ xanh (tăng) / ▼ đỏ (giảm)
 function deltaHtml(cur, prev) {
@@ -102,20 +102,26 @@ function renderKPI() {
   const cur = kpiVals(ovFiltered());
   let prev = null;
   if (S.compare && S.range !== 'all') { const ps = prevDatesSet(); if (ps && ps.size) prev = kpiVals(DATA.overview.filter(o => ps.has(o.date))); }
-  // Overview (+ tab khác): 4 card cốt lõi. Marketing: các chỉ số chi tiết kênh/chi phí.
+  // Overview (+ tab khác): 5 card cốt lõi (kèm ROAS). Marketing: ĐẦY ĐỦ tất cả card + TikTok.
   const core = [
     ['Total Orders', 'orders', v => v.toLocaleString(), null],
     ['Total Sales', 'sales', usd2, null],
     ['Total Ads Spend', 'ads', usd2, c => (c.ads / c.sales * 100 || 0).toFixed(1) + '% of sales'],
+    ['ROAS', 'roas', v => v.toFixed(2) + 'x', null],
     ['Net Profit', 'net', usd2, c => (c.net / c.sales * 100 || 0).toFixed(1) + '% of sales']
   ];
   const marketing = [
+    ['Total Orders', 'orders', v => v.toLocaleString(), null],
+    ['Total Sales', 'sales', usd2, null],
+    ['Total Ads Spend', 'ads', usd2, c => (c.ads / c.sales * 100 || 0).toFixed(1) + '% of sales'],
     ['FB Ads', 'fb', usd2, c => (c.fb / c.ads * 100 || 0).toFixed(1) + '% of ads'],
     ['Google Ads', 'gg', usd2, c => (c.gg / c.ads * 100 || 0).toFixed(1) + '% of ads'],
+    ['TikTok', 'tk', usd2, c => (c.tk / c.ads * 100 || 0).toFixed(1) + '% of ads'],
     ['AOV', 'aov', usd2, null],
     ['ROAS', 'roas', v => v.toFixed(2) + 'x', null],
     ['API Cost', 'api', usd2, c => (c.api / c.sales * 100 || 0).toFixed(1) + '% of sales'],
-    ['Fulfill Cost', 'ful', usd2, c => (c.ful / c.sales * 100 || 0).toFixed(1) + '% of sales']
+    ['Fulfill Cost', 'ful', usd2, c => (c.ful / c.sales * 100 || 0).toFixed(1) + '% of sales'],
+    ['Net Profit', 'net', usd2, c => (c.net / c.sales * 100 || 0).toFixed(1) + '% of sales']
   ];
   const defs = S.tab === 'marketing' ? marketing : core;
   document.getElementById('kpi').innerHTML = defs.map(([label, key, fmt, subFn]) => {
