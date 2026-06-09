@@ -221,7 +221,7 @@ function vMarketing() {
       <div class="chartwrap r4"><canvas id="mChart"></canvas></div></div>`;
 
   document.getElementById('view').innerHTML = subnav + totals + acctPanel + trend;
-  document.getElementById('mktNav').addEventListener('click', e => { if (e.target.tagName === 'BUTTON') { S.mkt = e.target.dataset.c; vMarketing(); } });
+  document.getElementById('mktNav').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { S.mkt = b.dataset.c; vMarketing(); } });   // closest: click trúng <span> chữ vẫn nhận
   document.getElementById('mMetric').addEventListener('click', e => { if (e.target.tagName === 'BUTTON') { S.metric = e.target.dataset.k; vMarketing(); } });
 
   // Trend chart — chỉ kênh đang chọn.
