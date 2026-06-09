@@ -239,21 +239,25 @@ function vProduct() {
   const totRev=sum(Object.values(byType),x=>x.rev)||1;
   const byRec={}; fact.forEach(r=>{byRec[r.Recipient]=(byRec[r.Recipient]||0)+r.Revenue;});
   const recCol={Papa:'#378ADD',Maman:'#D4537E',Mamie:'#1D9E75',Papy:'#EF9F27','Pet Lover':'#7F77DD',Other:'#8a93a8'};
+  const recMode = S.pRecMode || (S.pRecMode = 'pm');   // 'pm' = Papa vs Maman; 'all' = tất cả recipient
   document.getElementById('view').innerHTML = `
+    <div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h3 style="margin:0">Recipient theo thời gian</h3>
+      <span class="seg" id="pRecMode"><button data-r="pm" class="${recMode==='pm'?'on':''}">Papa vs Maman</button><button data-r="all" class="${recMode==='all'?'on':''}">Tất cả recipient</button></span></div>
+      <div class="chartwrap r4"><canvas id="pTrend"></canvas></div></div>
     <div class="panel"><h3>Theo product type — units vs value</h3>
       <div class="scroll"><table><thead><tr><th>Product Type</th><th>Units</th><th>Revenue</th><th>% Revenue</th></tr></thead><tbody>${
         Object.keys(byType).sort((a,b)=>byType[b].rev-byType[a].rev).map(t=>{const x=byType[t];return `<tr><td>${t}</td><td>${Math.round(x.u).toLocaleString()}</td><td>${x.rev?k$(x.rev):'<span style="color:var(--muted)">$0 (sub)</span>'}</td><td>${x.rev?(x.rev/totRev*100).toFixed(1)+'%':'—'}</td></tr>`;}).join('')
       }</tbody></table></div>
       <p class="note">Sub-item (Support/Insurance/Back side card) có Units nhưng Revenue=0 (giá trị dồn vào main).</p></div>
-    <div class="row">
-      <div class="panel"><h3>Recipient — revenue share</h3><div class="chartwrap"><canvas id="pDonut"></canvas></div></div>
-      <div class="panel"><h3>Papa vs Maman theo thời gian</h3><div class="chartwrap"><canvas id="pTrend"></canvas></div></div>
-    </div>`;
+    <div class="panel"><h3>Recipient — revenue share</h3><div class="chartwrap"><canvas id="pDonut"></canvas></div></div>`;
+  document.getElementById('pRecMode').addEventListener('click',e=>{const b=e.target.closest('button');if(b){S.pRecMode=b.dataset.r;vProduct();}});
   destroyChart('pDonut');
   CH['pDonut']=new Chart(document.getElementById('pDonut'),{type:'doughnut',data:{labels:Object.keys(byRec),datasets:[{data:Object.values(byRec).map(v=>Math.round(v)),backgroundColor:Object.keys(byRec).map(r=>recCol[r]||'#8a93a8'),borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#93a4c4',boxWidth:10,font:{size:11}}}}}});
   const dates=[...new Set(fact.map(r=>r.Date))].sort();
   const series=rec=>dates.map(d=>sum(fact.filter(r=>r.Date===d&&r.Recipient===rec),r=>r.Revenue));
-  lineChart('pTrend',dates,[{label:'Papa',data:series('Papa'),borderColor:'#378ADD',pointRadius:0,borderWidth:2,tension:.3},{label:'Maman',data:series('Maman'),borderColor:'#D4537E',pointRadius:0,borderWidth:2,tension:.3}]);
+  const recs = recMode==='all' ? Object.keys(byRec).filter(r=>byRec[r]>0).sort((a,b)=>byRec[b]-byRec[a]) : ['Papa','Maman'];
+  lineChart('pTrend',dates,recs.map(r=>({label:r,data:series(r),borderColor:recCol[r]||'#8a93a8',backgroundColor:recCol[r]||'#8a93a8',pointRadius:0,borderWidth:2,tension:.3})));
 }
 
 // ============ EXPLORER ============
