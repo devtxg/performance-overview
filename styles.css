@@ -5,12 +5,13 @@
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Arial,Helvetica,sans-serif;font-size:14px}
 .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap}
-.tabs button{background:transparent;border:1px solid transparent;color:var(--muted);padding:7px 14px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500}
+.tabs button{background:transparent;border:1px solid transparent;color:var(--muted);padding:10px 20px;border-radius:9px;cursor:pointer;font-size:17px;font-weight:600}
 .tabs button.on{background:var(--surface2);color:var(--text);border-color:var(--border)}
 .rangebox{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px}
 select,input[type=date],input[type=number]{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:13px}
 .gen{font-size:11px;color:var(--muted)}
 .kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px;padding:14px 16px}
+.kpi.krow2{padding-top:0}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
 .card .l{font-size:11px;color:var(--muted);margin:0 0 5px}
 .card .v{font-size:19px;font-weight:600;margin:0;color:var(--green)}
@@ -32,8 +33,7 @@ main{padding:0 16px 40px}
 .seg button{background:transparent;border:none;color:var(--muted);padding:5px 12px;font-size:12px;cursor:pointer}
 .seg button.on{background:var(--surface2);color:var(--text)}
 #mktNav{border-color:var(--border)}
-#mktNav button{padding:9px 24px;font-size:15px;font-weight:600}
-#mktNav button.on{color:var(--text)}
+#mktNav button{padding:7px 18px;font-size:14px;font-weight:600}
 table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}
 th,td{padding:7px 9px;text-align:right;border-bottom:1px solid var(--border)}
 th:first-child,td:first-child{text-align:left}
