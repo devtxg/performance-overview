@@ -174,11 +174,38 @@ function vOverview() {
       }</tbody></table></div></div>`;
   document.getElementById('ovMode').addEventListener('click', e => { if (e.target.tagName==='BUTTON'){ S.mode=e.target.dataset.m; vOverview(); }});
   const mk = (lab, arr, col) => ({ label: lab, data: arr, borderColor: col, backgroundColor: col, pointRadius: 0, borderWidth: 2, tension: .3 });
+  // Daily ≤15 ngày → cột nhóm (Sales/Ads/Profit) + đường ROAS trục phải (1–5). Còn lại → line.
+  if (S.mode === 'daily' && ov.length <= 15) {
+    document.getElementById('ovT').textContent = 'Daily Performance';
+    const labels = ov.map(o => o.date.slice(5));
+    const bars = [
+      { label: 'Total Sales', data: ov.map(o => Math.round(o.revenue)), color: '#3b9eff' },
+      { label: 'Ads Spend', data: ov.map(o => Math.round(o.totalAds)), color: '#9ca3af' },
+      { label: 'Profit', data: ov.map(o => Math.round(o.profit)), color: '#22c55e' }
+    ];
+    const roas = ov.map(o => o.totalAds ? +(o.revenue / o.totalAds).toFixed(2) : null);
+    ovComboChart('ovChart', labels, bars, roas);
+    return;
+  }
   let labels, ds, title;
   if (S.mode === 'daily') { title='Daily Performance'; labels = ov.map(o=>o.date); ds=[mk('Sales',ov.map(o=>o.revenue),'#378ADD'),mk('Ads Spend',ov.map(o=>o.totalAds),'#EF9F27'),mk('Net Profit',ov.map(o=>o.profit),'#1D9E75')]; }
   else { title='Lũy kế YTD'; labels = allOv.map(o=>o.date); ds=[mk('Σ Revenue',allOv.map(o=>cum[o.date].r),'#378ADD'),mk('Σ Ads',allOv.map(o=>cum[o.date].s),'#EF9F27'),mk('Σ Net Profit',allOv.map(o=>cum[o.date].p),'#1D9E75')]; }
   document.getElementById('ovT').textContent = title;
   lineChart('ovChart', labels, ds);
+}
+// Combo: cột nhóm (trục trái $) + đường ROAS (trục phải 1–5).
+function ovComboChart(id, labels, bars, roas) {
+  destroyChart(id);
+  const ds = bars.map(b => ({ label: b.label, data: b.data, backgroundColor: b.color, borderRadius: 3, maxBarThickness: 22, yAxisID: 'y' }));
+  ds.push({ type: 'line', label: 'ROAS', data: roas, borderColor: '#f97316', backgroundColor: '#f97316', borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#f97316', tension: .3, yAxisID: 'y1', spanGaps: true });
+  CH[id] = new Chart(document.getElementById(id), { type: 'bar', data: { labels, datasets: ds },
+    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { labels: { color: CH_LABEL, boxWidth: 12, font: { size: 11 }, usePointStyle: true } } },
+      scales: {
+        y: { position: 'left', beginAtZero: true, ticks: { color: CH_LABEL, font: { size: 10 }, callback: v => Math.abs(v) >= 1000 ? '$' + (v/1000).toFixed(0) + 'k' : '$' + v }, grid: { color: CH_GRID } },
+        y1: { position: 'right', min: 1, max: 5, ticks: { color: '#f97316', font: { size: 10 }, stepSize: 1, callback: v => v + 'x' }, grid: { drawOnChartArea: false } },
+        x: { ticks: { color: CH_LABEL, font: { size: 10 } }, grid: { display: false } }
+      } } });
 }
 
 // ============ MARKETING ============
