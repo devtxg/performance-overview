@@ -102,7 +102,7 @@ function renderKPI() {
   const cur = kpiVals(ovFiltered());
   let prev = null;
   if (S.compare && S.range !== 'all') { const ps = prevDatesSet(); if (ps && ps.size) prev = kpiVals(DATA.overview.filter(o => ps.has(o.date))); }
-  // Overview (+ tab khác): 5 card cốt lõi (kèm ROAS). Marketing: ĐẦY ĐỦ tất cả card + TikTok.
+  // Dòng cốt lõi (mọi tab). Marketing thêm dòng 2 chi tiết kênh/chi phí.
   const core = [
     ['Total Orders', 'orders', v => v.toLocaleString(), null],
     ['Total Sales', 'sales', usd2, null],
@@ -110,25 +110,22 @@ function renderKPI() {
     ['ROAS', 'roas', v => v.toFixed(2) + 'x', null],
     ['Net Profit', 'net', usd2, c => (c.net / c.sales * 100 || 0).toFixed(1) + '% of sales']
   ];
-  const marketing = [
-    ['Total Orders', 'orders', v => v.toLocaleString(), null],
-    ['Total Sales', 'sales', usd2, null],
-    ['Total Ads Spend', 'ads', usd2, c => (c.ads / c.sales * 100 || 0).toFixed(1) + '% of sales'],
+  const detail = [
     ['FB Ads', 'fb', usd2, c => (c.fb / c.ads * 100 || 0).toFixed(1) + '% of ads'],
     ['Google Ads', 'gg', usd2, c => (c.gg / c.ads * 100 || 0).toFixed(1) + '% of ads'],
     ['TikTok', 'tk', usd2, c => (c.tk / c.ads * 100 || 0).toFixed(1) + '% of ads'],
     ['AOV', 'aov', usd2, null],
-    ['ROAS', 'roas', v => v.toFixed(2) + 'x', null],
     ['API Cost', 'api', usd2, c => (c.api / c.sales * 100 || 0).toFixed(1) + '% of sales'],
-    ['Fulfill Cost', 'ful', usd2, c => (c.ful / c.sales * 100 || 0).toFixed(1) + '% of sales'],
-    ['Net Profit', 'net', usd2, c => (c.net / c.sales * 100 || 0).toFixed(1) + '% of sales']
+    ['Fulfill Cost', 'ful', usd2, c => (c.ful / c.sales * 100 || 0).toFixed(1) + '% of sales']
   ];
-  const defs = S.tab === 'marketing' ? marketing : core;
-  document.getElementById('kpi').innerHTML = defs.map(([label, key, fmt, subFn]) => {
+  const cardHtml = arr => arr.map(([label, key, fmt, subFn]) => {
     const sub = subFn ? subFn(cur) : '';
     const cmp = prev ? deltaHtml(cur[key], prev[key]) : '';
     return `<div class="card"><p class="l">${label}</p><p class="v">${fmt(cur[key])}</p>${sub ? `<p class="p">${sub}</p>` : ''}${cmp}</div>`;
   }).join('');
+  document.getElementById('kpi').innerHTML = S.tab === 'marketing'
+    ? `<div class="kpi">${cardHtml(core)}</div><div class="kpi krow2">${cardHtml(detail)}</div>`
+    : `<div class="kpi">${cardHtml(core)}</div>`;
 }
 
 function render() { renderKPI(); ({ overview: vOverview, marketing: vMarketing, product: vProduct, explorer: vExplorer, forecast: vForecast }[S.tab])(); }
@@ -162,7 +159,7 @@ function vOverview() {
 }
 
 // ============ MARKETING ============
-const MKT_COL = { Meta: '#378ADD', Google: '#1D9E75', TikTok: '#EF9F27' };
+const MKT_COL = { Meta: '#0866FF', Google: '#34A853', TikTok: '#25F4EE' };   // màu brand từng nền tảng (tab + chart)
 // Gom ads theo account + tổng (spend/clicks/impr/platformRevenue).
 function aggByAccount(arr) {
   const by = {}, tot = { spend: 0, clicks: 0, impr: 0, rev: 0 };
@@ -189,7 +186,7 @@ const fM2 = v => '$' + v.toFixed(2), fRoas = v => v.toFixed(2) + 'x', fInt = v =
 const MKT_CARDS = {
   Meta:   [['Amount spent','spend',usd2,{neutral:1}], ['CPC','cpc',fM2,{invert:1}], ['CPM','cpm',fM2,{invert:1}], ['ROAS','roas',fRoas,{}]],
   Google: [['Cost','spend',usd2,{neutral:1}], ['Impressions','impr',fInt,{neutral:1}], ['CTR','ctr',fPct,{}], ['CPC','cpc',fM2,{invert:1}], ['ROAS','roas',fRoas,{}]],
-  TikTok: [['Amount spent','spend',usd2,{neutral:1}], ['CPC','cpc',fM2,{invert:1}], ['CPM','cpm',fM2,{invert:1}], ['ROAS','roas',fRoas,{}]]
+  TikTok: [['Cost','spend',usd2,{neutral:1}], ['CPC','cpc',fM2,{invert:1}], ['CPM','cpm',fM2,{invert:1}], ['ROAS','roas',fRoas,{}]]
 };
 
 function vMarketing() {
@@ -199,7 +196,7 @@ function vMarketing() {
   const prev = ps ? aggByAccount(DATA.ads.filter(a => a.channel === ch && ps.has(a.date))) : null;
   const ct = adMetrics(cur.tot), pt = prev ? adMetrics(prev.tot) : null;
 
-  const subnav = `<div class="seg" id="mktNav" style="margin-bottom:12px">${['Meta','Google','TikTok'].map(c => `<button data-c="${c}" class="${ch===c?'on':''}">${c}</button>`).join('')}</div>`;
+  const subnav = `<div class="seg" id="mktNav" style="margin-bottom:12px">${['Meta','Google','TikTok'].map(c => `<button data-c="${c}" class="${ch===c?'on':''}" style="color:${MKT_COL[c]}${ch===c?'':';opacity:.5'}">${c}</button>`).join('')}</div>`;
   const tcard = (lab, key, fmt, opt) => `<div class="card"><p class="l">${lab}</p><p class="v">${fmt(ct[key])}</p>${pt ? deltaEl(ct[key], pt[key], opt, 'p') : ''}</div>`;
   const totals = `<div class="kpi">${MKT_CARDS[ch].map(c => tcard(c[0], c[1], c[2], c[3])).join('')}</div>`;
 
