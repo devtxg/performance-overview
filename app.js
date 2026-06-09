@@ -137,7 +137,7 @@ function vOverview() {
   const allOv = DATA.overview.slice().sort((a, b) => a.date.localeCompare(b.date));
   let cr = 0, cs = 0, cp = 0; const cum = {};
   allOv.forEach(o => { cr += o.revenue; cs += o.totalAds; cp += o.profit; cum[o.date] = { r: cr, s: cs, p: cp }; });
-  const rows = ov.slice(-14);
+  const rows = ov.slice().sort((a, b) => a.date.localeCompare(b.date));   // theo đúng time range đã chọn
   const prov = DATA.provisionalDays || 0, lastDates = DATA.overview.map(o => o.date).sort().slice(-prov);
   document.getElementById('view').innerHTML = `
     <div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
