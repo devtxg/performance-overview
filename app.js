@@ -133,10 +133,18 @@ function renderKPI() {
     ['API Cost', 'api', usd2, c => (c.api / c.sales * 100 || 0).toFixed(1) + '% of sales'],
     ['Fulfill Cost', 'ful', usd2, c => (c.ful / c.sales * 100 || 0).toFixed(1) + '% of sales']
   ];
+  // Thanh % hoàn thành mục tiêu profit sự kiện (29/3 → 21/6, goal $60k) — chỉ Overview, gắn vào card Net Profit.
+  let goalBar = '';
+  if (S.tab === 'overview') {
+    const cum = sum(DATA.overview.filter(o => o.date >= '2026-03-29' && o.date <= '2026-06-21'), o => o.profit);
+    const pct = cum / 60000 * 100;
+    goalBar = `<div class="goal"><div class="goalbar"><span style="width:${Math.max(0, Math.min(100, pct)).toFixed(1)}%"></span></div>`
+      + `<p class="goalt">${pct.toFixed(0)}% mục tiêu · ${k$(cum)} / $60k <span style="color:var(--muted);font-weight:400">(29/3–21/6)</span></p></div>`;
+  }
   const cardHtml = arr => arr.map(([label, key, fmt, subFn]) => {
     const sub = subFn ? subFn(cur) : '';
     const cmp = prev ? deltaHtml(cur[key], prev[key]) : '';
-    return `<div class="card"><p class="l">${label}</p><p class="v">${fmt(cur[key])}</p>${sub ? `<p class="p">${sub}</p>` : ''}${cmp}</div>`;
+    return `<div class="card"><p class="l">${label}</p><p class="v">${fmt(cur[key])}</p>${sub ? `<p class="p">${sub}</p>` : ''}${cmp}${key === 'net' ? goalBar : ''}</div>`;
   }).join('');
   document.getElementById('kpi').innerHTML = S.tab === 'marketing'
     ? `<div class="kpi">${cardHtml(core)}</div><div class="kpi krow2">${cardHtml(detail)}</div>`
