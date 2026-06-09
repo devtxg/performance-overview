@@ -13,9 +13,9 @@ select,input[type=date],input[type=number]{background:var(--surface2);color:var(
 .gen{font-size:11px;color:var(--muted)}
 .kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px;padding:14px 16px}
 .kpi.krow2{padding-top:0}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px;box-shadow:var(--shadow)}
-.card .l{font-size:11px;color:var(--muted);margin:0 0 5px}
-.card .v{font-size:19px;font-weight:700;margin:0;color:var(--text)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;box-shadow:var(--shadow);display:flex;flex-direction:column;justify-content:center}
+.card .l{font-size:12px;color:var(--muted);margin:0 0 6px}
+.card .v{font-size:23px;font-weight:700;margin:0;color:var(--text);line-height:1.15}
 .card .p{font-size:11px;color:var(--muted);margin:3px 0 0}
 .card .cmp{font-size:11px;font-weight:600;margin:4px 0 0}
 .cmp.up{color:var(--green)}
