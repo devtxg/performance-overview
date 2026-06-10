@@ -133,25 +133,20 @@ function renderKPI() {
     ['API Cost', 'api', usd2, c => (c.api / c.sales * 100 || 0).toFixed(1) + '% of sales'],
     ['Fulfill Cost', 'ful', usd2, c => (c.ful / c.sales * 100 || 0).toFixed(1) + '% of sales']
   ];
-  // Thanh % hoàn thành mục tiêu profit sự kiện (29/3 → 21/6, goal $60k) — chỉ Overview, gắn vào card Net Profit.
+  // Thanh % hoàn thành mục tiêu profit sự kiện (29/3 → 21/6, goal $60k) — chỉ Overview, gắn gọn trong card Net Profit (cùng size các card khác).
   let goalBar = '';
   if (S.tab === 'overview') {
     const cum = sum(DATA.overview.filter(o => o.date >= '2026-03-29' && o.date <= '2026-06-21'), o => o.profit);
     const pct = cum / 60000 * 100;
     const arc = Math.max(0, Math.min(100, pct));
-    goalBar = `<div class="gaugewrap">
-      <svg viewBox="0 0 100 58" class="gauge">
-        <path class="gbg" d="M8 52 A42 42 0 0 1 92 52"/>
-        <path class="gfg" pathLength="100" d="M8 52 A42 42 0 0 1 92 52" style="stroke-dashoffset:${100 - arc}"/>
-        <text x="50" y="47" text-anchor="middle" class="gtxt">${pct.toFixed(0)}%</text>
-      </svg>
-      <p class="goalt" style="text-align:center">${k$(cum)} / $60k goal <span style="color:var(--muted);font-weight:400">(Mar 29–Jun 21)</span></p></div>`;
+    goalBar = `<div class="goalbar"><div class="goalbar-track"><div class="goalbar-fill" style="width:${arc}%"></div></div>
+      <p class="goalt"><span class="goalpct">${pct.toFixed(0)}%</span> ${k$(cum)} / $60k goal</p></div>`;
   }
   const cardHtml = arr => arr.map(([label, key, fmt, subFn]) => {
     const sub = subFn ? subFn(cur) : '';
     const cmp = prev ? deltaHtml(cur[key], prev[key]) : '';
-    const body = `<p class="l">${label}</p><p class="v">${fmt(cur[key])}</p>${sub ? `<p class="p">${sub}</p>` : ''}${cmp}`;
-    if (key === 'net' && goalBar) return `<div class="card cardhi"><div class="cardL">${body}</div>${goalBar}</div>`;
+    const extra = (key === 'net' && goalBar) ? goalBar : '';
+    const body = `<p class="l">${label}</p><p class="v">${fmt(cur[key])}</p>${sub ? `<p class="p">${sub}</p>` : ''}${cmp}${extra}`;
     return `<div class="card">${body}</div>`;
   }).join('');
   document.getElementById('kpi').innerHTML = S.tab === 'marketing'
