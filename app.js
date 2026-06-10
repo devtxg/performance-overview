@@ -172,7 +172,7 @@ function vOverview() {
       <div class="chartwrap r4"><canvas id="ovChart"></canvas></div></div>
     <div class="panel"><h3>Daily data <span style="font-weight:400;color:var(--muted);font-size:11px">(last 3 cols = cumulative from ${DATA.fromDate})</span></h3>
       <div class="scroll scrollv"><table><thead><tr><th>Date</th><th>Orders</th><th>Sales</th><th>Total Ads</th><th>FB</th><th>Google</th><th>TikTok</th><th>API</th><th>Fulfill</th><th>Net Profit</th><th>Σ Revenue</th><th>Σ Spend</th><th>Σ Net Profit</th></tr></thead><tbody>${
-        rows.map(o => { const c = cum[o.date] || {}; const pv = lastDates.indexOf(o.date) >= 0;
+        rows.slice().reverse().map(o => { const c = cum[o.date] || {}; const pv = lastDates.indexOf(o.date) >= 0;
           return `<tr><td>${pv?'<span class="prov">●</span> ':''}${o.date.slice(5)}</td><td>${o.orders}</td><td>${k$(o.revenue)}</td><td>${k$(o.totalAds)}</td><td>${k$(o.meta)}</td><td>${k$(o.google)}</td><td>${k$(o.tiktok)}</td><td>${k$(o.api)}</td><td>${k$(o.fulfill)}</td><td class="${o.profit<0?'neg':''}">${k$(o.profit)}</td><td>${k$(c.r||0)}</td><td>${k$(c.s||0)}</td><td class="${(c.p||0)<0?'neg':''}">${k$(c.p||0)}</td></tr>`; }).join('')
       }</tbody></table></div></div>`;
   document.getElementById('ovMode').addEventListener('click', e => { if (e.target.tagName==='BUTTON'){ S.mode=e.target.dataset.m; vOverview(); }});
@@ -312,10 +312,10 @@ function productSalesTable() {
   if (!list.length) return '';
   const rows = list.map((p, i) => { const m = meta[p] || {};
     const img = m.img ? `<img src="${m.img}" loading="lazy" style="width:38px;height:38px;object-fit:cover;border-radius:6px;background:var(--surface2)">`
-      : `<div style="width:38px;height:38px;border-radius:6px;background:var(--surface2)"></div>`;
-    return `<tr><td>${i + 1}</td><td>${img}</td><td style="text-align:left;white-space:normal;max-width:340px">${m.t || p}</td><td>${Math.round(agg[p].u).toLocaleString()}</td><td>${k$(agg[p].rev)}</td></tr>`; }).join('');
+      : `<div style="width:38px;height:38px;border-radius:6px;background:var(--surface2);margin:0 auto"></div>`;
+    return `<tr><td style="text-align:center">${i + 1}</td><td style="text-align:center">${img}</td><td style="text-align:left;white-space:normal;max-width:260px">${m.t || p}</td><td style="text-align:center">${Math.round(agg[p].u).toLocaleString()}</td><td style="text-align:center">${k$(agg[p].rev)}</td></tr>`; }).join('');
   return `<div class="panel"><h3>Top products by units sold <span style="font-weight:400;color:var(--muted);font-size:11px">(by time range · main items · top 50)</span></h3>
-    <div class="scroll" style="max-height:560px;overflow:auto"><table><thead><tr><th>#</th><th>Image</th><th style="text-align:left">Product</th><th>Units</th><th>Revenue</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    <div class="scroll" style="max-height:340px;overflow:auto"><table><thead><tr><th style="text-align:center">#</th><th style="text-align:center">Image</th><th style="text-align:left">Item name</th><th style="text-align:center">Units</th><th style="text-align:center">Revenue</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 function vProduct() {
   const fact = factFiltered();
@@ -341,10 +341,13 @@ function vProduct() {
     .map(r => `<tr><td><span style="color:${recCol[r]}">●</span> ${r}</td><td>${Math.round(byRec[r].mainU).toLocaleString()}</td><td>${(byRec[r].rev/totRev*100).toFixed(1)}%</td></tr>`).join('');
 
   document.getElementById('view').innerHTML = `
-    <div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <h3 style="margin:0">Recipient over time</h3>
-      <span class="seg" id="pRecMode"><button data-r="pm" class="${recMode==='pm'?'on':''}">Papa vs Maman</button><button data-r="all" class="${recMode==='all'?'on':''}">All recipients</button></span></div>
-      <div class="chartwrap r4"><canvas id="pTrend"></canvas></div></div>
+    <div class="row">
+      <div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;flex-wrap:wrap">
+        <h3 style="margin:0">Recipient over time</h3>
+        <span class="seg" id="pRecMode"><button data-r="pm" class="${recMode==='pm'?'on':''}">Papa vs Maman</button><button data-r="all" class="${recMode==='all'?'on':''}">All recipients</button></span></div>
+        <div class="chartwrap" style="height:340px"><canvas id="pTrend"></canvas></div></div>
+      ${productSalesTable()}
+    </div>
     <div class="row">
       <div class="panel"><h3>Main items — units sold</h3>
         <div class="scroll"><table><thead><tr><th>Item</th><th>Units</th><th>% units</th></tr></thead><tbody>${mainRows}</tbody></table></div></div>
@@ -355,8 +358,7 @@ function vProduct() {
       <div class="panel"><h3>By recipient</h3>
         <div class="scroll"><table><thead><tr><th>Recipient</th><th>Main items sold</th><th>Revenue Share</th></tr></thead><tbody>${recRows}</tbody></table></div></div>
       <div class="panel"><h3>Recipient — revenue share</h3><div class="chartwrap"><canvas id="pDonut"></canvas></div></div>
-    </div>
-    ${productSalesTable()}`;
+    </div>`;
   document.getElementById('pRecMode').addEventListener('click',e=>{const b=e.target.closest('button');if(b){S.pRecMode=b.dataset.r;vProduct();}});
   destroyChart('pDonut');
   CH['pDonut']=new Chart(document.getElementById('pDonut'),{type:'doughnut',data:{labels:REC5,datasets:[{data:REC5.map(r=>Math.round(byRec[r].rev)),backgroundColor:REC5.map(r=>recCol[r]),borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:CH_LABEL,boxWidth:10,font:{size:11}}}}}});
