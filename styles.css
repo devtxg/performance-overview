@@ -65,14 +65,9 @@ tbody tr.fcbest{background:rgba(29,158,117,.14)}
 tbody tr.fcbest td:first-child{color:var(--green);font-weight:700}
 tbody tr.fccur td{font-weight:600}
 .note{font-size:11px;color:var(--muted);margin:8px 2px 0}
-.goalt{font-size:10px;color:var(--text);font-weight:600;margin:4px 0 0}
-.gaugewrap{margin-top:6px}
-/* Card Net Profit nhấn: layout ngang (text trái · gauge phải), span 2 cột, viền cam + nền peach */
-.card.cardhi{flex-direction:row;align-items:center;gap:14px;grid-column:span 2;border:2px solid var(--accent);background:#fff8f1}
-.cardL{flex:1;min-width:0}
-.card.cardhi .gaugewrap{margin-top:0;width:122px;flex-shrink:0}
-.gauge{width:100%;max-width:128px;display:block;margin:0 auto}
-.gauge path{fill:none;stroke-width:10;stroke-linecap:round}
-.gauge .gbg{stroke:var(--surface2)}
-.gauge .gfg{stroke:var(--accent);stroke-dasharray:100;transition:stroke-dashoffset .6s}
-.gauge .gtxt{font-size:17px;font-weight:700;fill:var(--text)}
+/* Thanh tiến độ mục tiêu profit — gọn trong card Net Profit chuẩn, không phá kích thước */
+.goalbar{margin-top:8px}
+.goalbar-track{height:5px;border-radius:3px;background:var(--surface2);overflow:hidden}
+.goalbar-fill{height:100%;border-radius:3px;background:var(--accent);transition:width .6s}
+.goalt{font-size:10px;color:var(--muted);font-weight:500;margin:4px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.goalt .goalpct{color:var(--accent);font-weight:700}
