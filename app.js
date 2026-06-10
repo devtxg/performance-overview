@@ -23,13 +23,13 @@ fetch('./data.json?_=' + Date.now()).then(r => r.json()).then(d => {
   if (DATA.overview) DATA.overview = DATA.overview.filter(o => o.date < cutoff);
   if (DATA.fact) DATA.fact = DATA.fact.filter(r => r.Date < cutoff);
   if (DATA.ads) DATA.ads = DATA.ads.filter(a => a.date < cutoff);
-  document.getElementById('genAt').textContent = 'cập nhật ' + (d.generatedAt || '').slice(0, 16).replace('T', ' ');
+  document.getElementById('genAt').textContent = 'updated ' + (d.generatedAt || '').slice(0, 16).replace('T', ' ');
   // init custom range bounds
   const dates = DATA.overview.map(o => o.date).sort();
   S.cFrom = dates[0]; S.cTo = dates[dates.length - 1];
   document.getElementById('cFrom').value = S.cFrom; document.getElementById('cTo').value = S.cTo;
   bindUI(); render();
-}).catch(e => { document.getElementById('view').innerHTML = '<div class="panel">Không tải được data.json: ' + e + '</div>'; });
+}).catch(e => { document.getElementById('view').innerHTML = '<div class="panel">Failed to load data.json: ' + e + '</div>'; });
 
 function bindUI() {
   document.getElementById('tabs').addEventListener('click', e => {
@@ -145,7 +145,7 @@ function renderKPI() {
         <path class="gfg" pathLength="100" d="M8 52 A42 42 0 0 1 92 52" style="stroke-dashoffset:${100 - arc}"/>
         <text x="50" y="47" text-anchor="middle" class="gtxt">${pct.toFixed(0)}%</text>
       </svg>
-      <p class="goalt" style="text-align:center">${k$(cum)} / $60k mục tiêu <span style="color:var(--muted);font-weight:400">(29/3–21/6)</span></p></div>`;
+      <p class="goalt" style="text-align:center">${k$(cum)} / $60k goal <span style="color:var(--muted);font-weight:400">(Mar 29–Jun 21)</span></p></div>`;
   }
   const cardHtml = arr => arr.map(([label, key, fmt, subFn]) => {
     const sub = subFn ? subFn(cur) : '';
@@ -173,9 +173,9 @@ function vOverview() {
   document.getElementById('view').innerHTML = `
     <div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <h3 style="margin:0" id="ovT">Daily Performance</h3>
-      <span class="seg" id="ovMode"><button data-m="daily" class="${S.mode==='daily'?'on':''}">Daily</button><button data-m="cum" class="${S.mode==='cum'?'on':''}">Lũy kế YTD</button></span></div>
+      <span class="seg" id="ovMode"><button data-m="daily" class="${S.mode==='daily'?'on':''}">Daily</button><button data-m="cum" class="${S.mode==='cum'?'on':''}">Cumulative YTD</button></span></div>
       <div class="chartwrap r4"><canvas id="ovChart"></canvas></div></div>
-    <div class="panel"><h3>Daily data <span style="font-weight:400;color:var(--muted);font-size:11px">(3 cột cuối = lũy kế từ ${DATA.fromDate})</span></h3>
+    <div class="panel"><h3>Daily data <span style="font-weight:400;color:var(--muted);font-size:11px">(last 3 cols = cumulative from ${DATA.fromDate})</span></h3>
       <div class="scroll scrollv"><table><thead><tr><th>Date</th><th>Orders</th><th>Sales</th><th>Total Ads</th><th>FB</th><th>Google</th><th>TikTok</th><th>API</th><th>Fulfill</th><th>Net Profit</th><th>Σ Revenue</th><th>Σ Spend</th><th>Σ Net Profit</th></tr></thead><tbody>${
         rows.map(o => { const c = cum[o.date] || {}; const pv = lastDates.indexOf(o.date) >= 0;
           return `<tr><td>${pv?'<span class="prov">●</span> ':''}${o.date.slice(5)}</td><td>${o.orders}</td><td>${k$(o.revenue)}</td><td>${k$(o.totalAds)}</td><td>${k$(o.meta)}</td><td>${k$(o.google)}</td><td>${k$(o.tiktok)}</td><td>${k$(o.api)}</td><td>${k$(o.fulfill)}</td><td class="${o.profit<0?'neg':''}">${k$(o.profit)}</td><td>${k$(c.r||0)}</td><td>${k$(c.s||0)}</td><td class="${(c.p||0)<0?'neg':''}">${k$(c.p||0)}</td></tr>`; }).join('')
@@ -197,7 +197,7 @@ function vOverview() {
   }
   let labels, ds, title;
   if (S.mode === 'daily') { title='Daily Performance'; labels = ov.map(o=>o.date); ds=[mk('Sales',ov.map(o=>o.revenue),'#378ADD'),mk('Ads Spend',ov.map(o=>o.totalAds),'#EF9F27'),mk('Net Profit',ov.map(o=>o.profit),'#1D9E75')]; }
-  else { title='Lũy kế YTD'; labels = allOv.map(o=>o.date); ds=[mk('Σ Revenue',allOv.map(o=>cum[o.date].r),'#378ADD'),mk('Σ Ads',allOv.map(o=>cum[o.date].s),'#EF9F27'),mk('Σ Net Profit',allOv.map(o=>cum[o.date].p),'#1D9E75')]; }
+  else { title='Cumulative YTD'; labels = allOv.map(o=>o.date); ds=[mk('Σ Revenue',allOv.map(o=>cum[o.date].r),'#378ADD'),mk('Σ Ads',allOv.map(o=>cum[o.date].s),'#EF9F27'),mk('Σ Net Profit',allOv.map(o=>cum[o.date].p),'#1D9E75')]; }
   document.getElementById('ovT').textContent = title;
   lineChart('ovChart', labels, ds);
 }
@@ -280,15 +280,15 @@ function vMarketing() {
   const tcard = (lab, key, fmt, opt) => `<div class="card"><p class="l">${lab}</p><p class="v">${fmt(ct[key])}</p>${pt ? deltaEl(ct[key], pt[key], opt, 'p') : ''}</div>`;
   const totals = `<div class="kpi">${MKT_CARDS[ch].map(c => tcard(c[0], c[1], c[2], c[3])).join('')}</div>`;
 
-  // Theo tài khoản — chỉ Meta (nhiều account). Account spend>0 mới hiện.
+  // By account — chỉ Meta (nhiều account). Account spend>0 mới hiện.
   let acctPanel = '';
   if (ch === 'Meta') {
     const accts = Object.keys(cur.by).filter(a => cur.by[a].spend > 0).sort((a, b) => cur.by[b].spend - cur.by[a].spend);
     const cell = (m, pm, key, fmt, opt) => `<td>${fmt(m[key])}${pm ? ' ' + deltaEl(m[key], pm[key], opt, 'span') : ''}</td>`;
     const rows = accts.map(a => { const m = adMetrics(cur.by[a]), pm = prev && prev.by[a] ? adMetrics(prev.by[a]) : null;
       return `<tr><td>${a}</td>${cell(m,pm,'spend',usd2,{neutral:1})}${cell(m,pm,'cpc',fM2,{invert:1})}${cell(m,pm,'cpm',fM2,{invert:1})}${cell(m,pm,'roas',fRoas,{})}</tr>`; }).join('');
-    acctPanel = `<div class="panel"><h3>Theo tài khoản <span style="font-weight:400;color:var(--muted);font-size:11px">(spend > 0${pt ? ' · Δ vs kỳ trước cùng độ dài' : ''})</span></h3>
-      <div class="scroll"><table><thead><tr><th>Tài khoản</th><th>Amount spent</th><th>CPC</th><th>CPM</th><th>ROAS</th></tr></thead><tbody>${rows || '<tr><td colspan="5" style="color:var(--muted)">Không có tài khoản nào có spend trong kỳ.</td></tr>'}</tbody></table></div></div>`;
+    acctPanel = `<div class="panel"><h3>By account <span style="font-weight:400;color:var(--muted);font-size:11px">(spend > 0${pt ? ' · Δ vs prev period' : ''})</span></h3>
+      <div class="scroll"><table><thead><tr><th>Account</th><th>Amount spent</th><th>CPC</th><th>CPM</th><th>ROAS</th></tr></thead><tbody>${rows || '<tr><td colspan="5" style="color:var(--muted)">No account with spend in this period.</td></tr>'}</tbody></table></div></div>`;
   }
 
   const trend = `<div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="margin:0">Trend ${ch}</h3>
@@ -319,8 +319,8 @@ function productSalesTable() {
     const img = m.img ? `<img src="${m.img}" loading="lazy" style="width:38px;height:38px;object-fit:cover;border-radius:6px;background:var(--surface2)">`
       : `<div style="width:38px;height:38px;border-radius:6px;background:var(--surface2)"></div>`;
     return `<tr><td>${i + 1}</td><td>${img}</td><td style="text-align:left;white-space:normal;max-width:340px">${m.t || p}</td><td>${Math.round(agg[p].u).toLocaleString()}</td><td>${k$(agg[p].rev)}</td></tr>`; }).join('');
-  return `<div class="panel"><h3>Top sản phẩm theo lượng bán <span style="font-weight:400;color:var(--muted);font-size:11px">(theo time range · main item · top 50)</span></h3>
-    <div class="scroll" style="max-height:560px;overflow:auto"><table><thead><tr><th>#</th><th>Ảnh</th><th style="text-align:left">Sản phẩm</th><th>Units</th><th>Revenue</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  return `<div class="panel"><h3>Top products by units sold <span style="font-weight:400;color:var(--muted);font-size:11px">(by time range · main items · top 50)</span></h3>
+    <div class="scroll" style="max-height:560px;overflow:auto"><table><thead><tr><th>#</th><th>Image</th><th style="text-align:left">Product</th><th>Units</th><th>Revenue</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 function vProduct() {
   const fact = factFiltered();
@@ -347,18 +347,18 @@ function vProduct() {
 
   document.getElementById('view').innerHTML = `
     <div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <h3 style="margin:0">Recipient theo thời gian</h3>
-      <span class="seg" id="pRecMode"><button data-r="pm" class="${recMode==='pm'?'on':''}">Papa vs Maman</button><button data-r="all" class="${recMode==='all'?'on':''}">Tất cả recipient</button></span></div>
+      <h3 style="margin:0">Recipient over time</h3>
+      <span class="seg" id="pRecMode"><button data-r="pm" class="${recMode==='pm'?'on':''}">Papa vs Maman</button><button data-r="all" class="${recMode==='all'?'on':''}">All recipients</button></span></div>
       <div class="chartwrap r4"><canvas id="pTrend"></canvas></div></div>
     <div class="row">
-      <div class="panel"><h3>Main item — số lượng bán</h3>
+      <div class="panel"><h3>Main items — units sold</h3>
         <div class="scroll"><table><thead><tr><th>Item</th><th>Units</th><th>% units</th></tr></thead><tbody>${mainRows}</tbody></table></div></div>
-      <div class="panel"><h3>Sub item — số lượng & doanh thu</h3>
+      <div class="panel"><h3>Sub items — units & revenue</h3>
         <div class="scroll"><table><thead><tr><th>Item</th><th>Units</th><th>Total Sale</th></tr></thead><tbody>${subRows}</tbody></table></div></div>
     </div>
     <div class="row">
-      <div class="panel"><h3>Theo đối tượng (recipient)</h3>
-        <div class="scroll"><table><thead><tr><th>Đối tượng</th><th>Main item bán</th><th>Revenue Share</th></tr></thead><tbody>${recRows}</tbody></table></div></div>
+      <div class="panel"><h3>By recipient</h3>
+        <div class="scroll"><table><thead><tr><th>Recipient</th><th>Main items sold</th><th>Revenue Share</th></tr></thead><tbody>${recRows}</tbody></table></div></div>
       <div class="panel"><h3>Recipient — revenue share</h3><div class="chartwrap"><canvas id="pDonut"></canvas></div></div>
     </div>
     ${productSalesTable()}`;
@@ -406,7 +406,7 @@ const FC_EVENT = '2026-06-21', FC_CUT_STD = '2026-06-12', FC_CUT_EXP = '2026-06-
 const FC_CURVE = [[30,0.50],[16,0.85],[12,1.05],[9,1.45],[5,1.70],[3,1.15],[1,0.80],[0,0.60],[-3,0.42],[-9,0.35]];
 function vForecast() {
   const ov = DATA.overview.slice().sort((a, b) => a.date.localeCompare(b.date));
-  if (!ov.length) { document.getElementById('view').innerHTML = '<div class="panel">Chưa có data.</div>'; return; }
+  if (!ov.length) { document.getElementById('view').innerHTML = '<div class="panel">No data.</div>'; return; }
   const lastActual = ov[ov.length - 1].date, ovBy = {}; ov.forEach(o => ovBy[o.date] = o);
   const last7 = ov.slice(-7);
   const sumSp = sum(last7, o => o.totalAds), sumRev = sum(last7, o => o.revenue);
