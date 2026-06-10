@@ -6,6 +6,9 @@
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Arial,Helvetica,sans-serif;font-size:14px}
 .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.brandtabs{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.brand{font-size:18px;font-weight:800;color:var(--text);letter-spacing:.2px}
+.brand::before{content:"📊 "}
 .tabs button{background:transparent;border:1px solid transparent;color:var(--muted);padding:10px 20px;border-radius:9px;cursor:pointer;font-size:17px;font-weight:600}
 .tabs button.on{background:var(--surface2);color:var(--accent);border-color:var(--border)}
 .rangebox{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px}
