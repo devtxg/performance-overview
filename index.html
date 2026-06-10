@@ -1,19 +1,22 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Koccie Dashboard</title>
+  <title>Koccie Performance 2026</title>
   <script>document.write('<link rel="stylesheet" href="./styles.css?_=' + Date.now() + '">');</script>   <!-- cache-bust: luôn lấy CSS mới -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <header class="topbar">
-    <nav class="tabs" id="tabs">
-      <button data-tab="overview" class="on">Overview</button>
-      <button data-tab="marketing">Marketing</button>
-      <button data-tab="product">Product</button>
-    </nav>
+    <div class="brandtabs">
+      <span class="brand">Koccie Performance 2026</span>
+      <nav class="tabs" id="tabs">
+        <button data-tab="overview" class="on">Overview</button>
+        <button data-tab="marketing">Marketing</button>
+        <button data-tab="product">Product</button>
+      </nav>
+    </div>
     <div class="rangebox">
       <label>Time Range</label>
       <select id="range">
