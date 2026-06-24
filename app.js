@@ -6,6 +6,7 @@ const usd = n => '$' + (Math.round(n)).toLocaleString('en-US');
 const usd2 = n => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const k$ = n => Math.abs(n) >= 1000 ? '$' + (n / 1000).toFixed(1) + 'k' : '$' + Math.round(n);
 const sum = (a, f) => a.reduce((s, x) => s + (f ? f(x) : x), 0);
+const salesOf = o => Number(o && (o.sales != null ? o.sales : o.revenue)) || 0;
 function destroyChart(id) { if (CH[id]) { CH[id].destroy(); delete CH[id]; } }
 const CH_LABEL = '#6b7280', CH_GRID = '#e9ebf0', CH_GRID2 = '#eef0f4';   // màu nhãn/lưới Chart.js (light theme)
 // ----- date helpers (local calendar) -----
@@ -86,7 +87,7 @@ const adsFiltered = () => { const r = rangeDates(); return DATA.ads.filter(o => 
 
 // ===== KPI strip (mọi tab) =====
 function kpiVals(ov) {
-  const sales = sum(ov, o => o.revenue), ads = sum(ov, o => o.totalAds), orders = sum(ov, o => o.orders);
+  const sales = sum(ov, salesOf), ads = sum(ov, o => o.totalAds), orders = sum(ov, o => o.orders);
   const fb = sum(ov, o => o.meta), gg = sum(ov, o => o.google), tk = sum(ov, o => o.tiktok), api = sum(ov, o => o.api), ful = sum(ov, o => o.fulfill), net = sum(ov, o => o.profit);
   return { orders, sales, ads, fb, gg, tk, aov: sales / orders || 0, roas: sales / ads || 0, api, ful, net };
 }
@@ -162,7 +163,7 @@ function vOverview() {
   // cumulative YTD (toàn bộ, không theo range)
   const allOv = DATA.overview.slice().sort((a, b) => a.date.localeCompare(b.date));
   let cr = 0, cs = 0, cp = 0; const cum = {};
-  allOv.forEach(o => { cr += o.revenue; cs += o.totalAds; cp += o.profit; cum[o.date] = { r: cr, s: cs, p: cp }; });
+  allOv.forEach(o => { cr += salesOf(o); cs += o.totalAds; cp += o.profit; cum[o.date] = { r: cr, s: cs, p: cp }; });
   const rows = ov.slice().sort((a, b) => a.date.localeCompare(b.date));   // theo đúng time range đã chọn
   const prov = DATA.provisionalDays || 0, lastDates = DATA.overview.map(o => o.date).sort().slice(-prov);
   document.getElementById('view').innerHTML = `
@@ -171,9 +172,10 @@ function vOverview() {
       <span class="seg" id="ovMode"><button data-m="daily" class="${S.mode==='daily'?'on':''}">Daily</button><button data-m="cum" class="${S.mode==='cum'?'on':''}">Cumulative YTD</button></span></div>
       <div class="chartwrap r4"><canvas id="ovChart"></canvas></div></div>
     <div class="panel"><h3>Daily data <span style="font-weight:400;color:var(--muted);font-size:11px">(last 3 cols = cumulative from ${DATA.fromDate})</span></h3>
-      <div class="scroll scrollv"><table><thead><tr><th>Date</th><th>Orders</th><th>Sales</th><th>Total Ads</th><th>FB</th><th>Google</th><th>TikTok</th><th>API</th><th>Fulfill</th><th>Net Profit</th><th>Σ Revenue</th><th>Σ Spend</th><th>Σ Net Profit</th></tr></thead><tbody>${
+      <div class="scroll scrollv"><table><thead><tr><th>Date</th><th>Orders</th><th>Sales</th><th>Total Ads</th><th>ROAS</th><th>FB</th><th>Google</th><th>TikTok</th><th>API</th><th>Fulfill</th><th>Net Profit</th><th>Σ Sales</th><th>Σ Spend</th><th>Σ Net Profit</th></tr></thead><tbody>${
         rows.slice().reverse().map(o => { const c = cum[o.date] || {}; const pv = lastDates.indexOf(o.date) >= 0;
-          return `<tr><td>${pv?'<span class="prov">●</span> ':''}${o.date.slice(5)}</td><td>${o.orders}</td><td>${k$(o.revenue)}</td><td>${k$(o.totalAds)}</td><td>${k$(o.meta)}</td><td>${k$(o.google)}</td><td>${k$(o.tiktok)}</td><td>${k$(o.api)}</td><td>${k$(o.fulfill)}</td><td class="${o.profit<0?'neg':''}">${k$(o.profit)}</td><td>${k$(c.r||0)}</td><td>${k$(c.s||0)}</td><td class="${(c.p||0)<0?'neg':''}">${k$(c.p||0)}</td></tr>`; }).join('')
+          const roas = o.totalAds ? (salesOf(o) / o.totalAds).toFixed(2) + 'x' : '0.00x';
+          return `<tr><td>${pv?'<span class="prov">●</span> ':''}${o.date.slice(5)}</td><td>${o.orders}</td><td>${k$(salesOf(o))}</td><td>${k$(o.totalAds)}</td><td>${roas}</td><td>${k$(o.meta)}</td><td>${k$(o.google)}</td><td>${k$(o.tiktok)}</td><td>${k$(o.api)}</td><td>${k$(o.fulfill)}</td><td class="${o.profit<0?'neg':''}">${k$(o.profit)}</td><td>${k$(c.r||0)}</td><td>${k$(c.s||0)}</td><td class="${(c.p||0)<0?'neg':''}">${k$(c.p||0)}</td></tr>`; }).join('')
       }</tbody></table></div></div>`;
   document.getElementById('ovMode').addEventListener('click', e => { if (e.target.tagName==='BUTTON'){ S.mode=e.target.dataset.m; vOverview(); }});
   const mk = (lab, arr, col) => ({ label: lab, data: arr, borderColor: col, backgroundColor: col, pointRadius: 0, borderWidth: 2, tension: .3 });
@@ -182,17 +184,17 @@ function vOverview() {
     document.getElementById('ovT').textContent = 'Daily Performance';
     const labels = ov.map(o => o.date.slice(5));
     const bars = [
-      { label: 'Total Sales', data: ov.map(o => Math.round(o.revenue)), color: '#3b9eff' },
+      { label: 'Total Sales', data: ov.map(o => Math.round(salesOf(o))), color: '#3b9eff' },
       { label: 'Ads Spend', data: ov.map(o => Math.round(o.totalAds)), color: '#9ca3af' },
       { label: 'Profit', data: ov.map(o => Math.round(o.profit)), color: '#22c55e' }
     ];
-    const roas = ov.map(o => o.totalAds ? +(o.revenue / o.totalAds).toFixed(2) : null);
+    const roas = ov.map(o => o.totalAds ? +(salesOf(o) / o.totalAds).toFixed(2) : null);
     ovComboChart('ovChart', labels, bars, roas);
     return;
   }
   let labels, ds, title;
-  if (S.mode === 'daily') { title='Daily Performance'; labels = ov.map(o=>o.date); ds=[mk('Sales',ov.map(o=>o.revenue),'#378ADD'),mk('Ads Spend',ov.map(o=>o.totalAds),'#EF9F27'),mk('Net Profit',ov.map(o=>o.profit),'#1D9E75')]; }
-  else { title='Cumulative YTD'; labels = allOv.map(o=>o.date); ds=[mk('Σ Revenue',allOv.map(o=>cum[o.date].r),'#378ADD'),mk('Σ Ads',allOv.map(o=>cum[o.date].s),'#EF9F27'),mk('Σ Net Profit',allOv.map(o=>cum[o.date].p),'#1D9E75')]; }
+  if (S.mode === 'daily') { title='Daily Performance'; labels = ov.map(o=>o.date); ds=[mk('Sales',ov.map(salesOf),'#378ADD'),mk('Ads Spend',ov.map(o=>o.totalAds),'#EF9F27'),mk('Net Profit',ov.map(o=>o.profit),'#1D9E75')]; }
+  else { title='Cumulative YTD'; labels = allOv.map(o=>o.date); ds=[mk('Σ Sales',allOv.map(o=>cum[o.date].r),'#378ADD'),mk('Σ Ads',allOv.map(o=>cum[o.date].s),'#EF9F27'),mk('Σ Net Profit',allOv.map(o=>cum[o.date].p),'#1D9E75')]; }
   document.getElementById('ovT').textContent = title;
   lineChart('ovChart', labels, ds);
 }
@@ -406,7 +408,7 @@ function vForecast() {
   if (!ov.length) { document.getElementById('view').innerHTML = '<div class="panel">No data.</div>'; return; }
   const lastActual = ov[ov.length - 1].date, ovBy = {}; ov.forEach(o => ovBy[o.date] = o);
   const last7 = ov.slice(-7);
-  const sumSp = sum(last7, o => o.totalAds), sumRev = sum(last7, o => o.revenue);
+  const sumSp = sum(last7, o => o.totalAds), sumRev = sum(last7, salesOf);
   const S0 = sumSp / (last7.length || 1) || 1, R0 = sumRev / (last7.length || 1) || 1;   // spend & revenue TB/ngày
   const curROAS = sumSp ? sumRev / sumSp : 2;
   const fulfillR = sumRev ? sum(last7, o => o.fulfill) / sumRev : 0.25;
@@ -441,7 +443,7 @@ function vForecast() {
     document.getElementById('fcC0V').textContent = Math.round(c0 * 100) + '%';
     document.getElementById('fcKpi').innerHTML = [
       `<div class="card"><p class="l">📈 Net Profit (còn lại)</p><p class="v ${t.profit<0?'neg':''}">${usd(t.profit)}</p><p class="p">margin ${(t.margin*100).toFixed(0)}%</p></div>`,
-      `<div class="card"><p class="l">💵 Revenue (còn lại)</p><p class="v">${usd(t.rev)}</p></div>`,
+      `<div class="card"><p class="l">💵 Sales (còn lại)</p><p class="v">${usd(t.rev)}</p></div>`,
       `<div class="card"><p class="l">📊 Ad Spend (còn lại)</p><p class="v">${usd(t.spend)}</p><p class="p">ROAS ${t.roas.toFixed(2)}x</p></div>`,
       `<div class="card"><p class="l">📦 Fulfill cần chuẩn bị</p><p class="v">${usd(t.fulfill)}</p><p class="p">${(fulfillR*100).toFixed(0)}% revenue</p></div>`,
       `<div class="card"><p class="l">⏳ Tiền cần chuẩn bị</p><p class="v" style="color:var(--amber)">${usd(t.cash)}</p><p class="p">spend + fulfill</p></div>`
@@ -452,11 +454,11 @@ function vForecast() {
       return `<tr class="${hot?'fcbest':''}${cur?' fccur':''}" style="cursor:pointer" data-f="${s}"><td>${Math.round(s*100)}%${hot?' ⭐':''}${cur?' ◀':''}</td><td>${k$(ts.spend)}</td><td>${k$(ts.rev)}</td><td class="${ts.profit<0?'neg':''}">${k$(ts.profit)}</td><td>${ts.roas.toFixed(2)}x</td><td>${(ts.margin*100).toFixed(0)}%</td></tr>`; }).join('');
     document.querySelectorAll('#fcScen tr[data-f]').forEach(tr => tr.addEventListener('click', () => { S.fc.f = +tr.dataset.f; document.getElementById('fcF').value = S.fc.f; render(); }));
     // chart
-    const aRev = winDates.map(d => (ovBy[d] && d <= lastActual) ? ovBy[d].revenue : null);
+    const aRev = winDates.map(d => (ovBy[d] && d <= lastActual) ? salesOf(ovBy[d]) : null);
     const aPf = winDates.map(d => (ovBy[d] && d <= lastActual) ? ovBy[d].profit : null);
     const fRev = winDates.map(() => null), fPf = winDates.map(() => null);
     const li = winDates.indexOf(lastActual);
-    if (li >= 0 && ovBy[lastActual]) { fRev[li] = ovBy[lastActual].revenue; fPf[li] = ovBy[lastActual].profit; }
+    if (li >= 0 && ovBy[lastActual]) { fRev[li] = salesOf(ovBy[lastActual]); fPf[li] = ovBy[lastActual].profit; }
     winDates.forEach((d, i) => { if (d > lastActual) { const x = dayFc(d, f, c0); fRev[i] = Math.round(x.rev); fPf[i] = Math.round(x.profit); } });
     const sol = (lab, dt, c) => ({ label: lab, data: dt, borderColor: c, pointRadius: 0, borderWidth: 2, tension: .3, spanGaps: false });
     const dsh = (lab, dt, c) => ({ label: lab, data: dt, borderColor: c, borderDash: [5, 4], pointRadius: 0, borderWidth: 2, tension: .3, spanGaps: false });
@@ -475,7 +477,7 @@ function vForecast() {
       <div id="fcKpi" class="kpi"></div>
       <div class="chartwrap r4"><canvas id="fcChart"></canvas></div>
       <h3 style="margin:14px 0 6px">So sánh kịch bản chi tiêu — phần còn lại</h3>
-      <div class="scroll"><table><thead><tr><th>Mức chi</th><th>Ad Spend</th><th>Revenue</th><th>Net Profit</th><th>ROAS</th><th>Margin</th></tr></thead><tbody id="fcScen"></tbody></table></div>
+      <div class="scroll"><table><thead><tr><th>Mức chi</th><th>Ad Spend</th><th>Sales</th><th>Net Profit</th><th>ROAS</th><th>Margin</th></tr></thead><tbody id="fcScen"></tbody></table></div>
       <p class="note">⭐ = mức tối đa PROFIT. <b>Bấm một dòng để chọn.</b> Mô hình bão hòa: chi 100% = bám sát cầu (ROAS ≈ hiện tại ${curROAS.toFixed(2)}x); chi ít hơn vẫn giữ phần lớn doanh thu nên lãi thường cao hơn. Kéo "độ bão hòa": cao = chi hiện tại đã gần kịch trần cầu → cắt spend càng an toàn. varCost ${(varCost*100).toFixed(0)}% & fulfill ${(fulfillR*100).toFixed(0)}% tự tính từ 7 ngày thực. Đường liền = thực, nét đứt = dự báo.</p>
     </div>`;
   document.getElementById('fcF').addEventListener('input', e => { S.fc.f = +e.target.value; render(); });
