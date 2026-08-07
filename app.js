@@ -134,20 +134,10 @@ function renderKPI() {
     ['API Cost', 'api', usd2, c => (c.api / c.sales * 100 || 0).toFixed(1) + '% of sales'],
     ['Fulfill Cost', 'ful', usd2, c => (c.ful / c.sales * 100 || 0).toFixed(1) + '% of sales']
   ];
-  // Thanh % hoàn thành mục tiêu profit sự kiện (29/3 → 21/6, goal $60k) — chỉ Overview, gắn gọn trong card Net Profit (cùng size các card khác).
-  let goalBar = '';
-  if (S.tab === 'overview') {
-    const cum = sum(DATA.overview.filter(o => o.date >= '2026-03-29' && o.date <= '2026-06-21'), o => o.profit);
-    const pct = cum / 60000 * 100;
-    const arc = Math.max(0, Math.min(100, pct));
-    goalBar = `<div class="goalbar"><div class="goalbar-track"><div class="goalbar-fill" style="width:${arc}%"></div></div>
-      <p class="goalt"><span class="goalpct">${pct.toFixed(0)}%</span> ${k$(cum)} / $60k goal</p></div>`;
-  }
   const cardHtml = arr => arr.map(([label, key, fmt, subFn]) => {
     const sub = subFn ? subFn(cur) : '';
     const cmp = prev ? deltaHtml(cur[key], prev[key]) : '';
-    const extra = (key === 'net' && goalBar) ? goalBar : '';
-    const body = `<p class="l">${label}</p><p class="v">${fmt(cur[key])}</p>${sub ? `<p class="p">${sub}</p>` : ''}${cmp}${extra}`;
+    const body = `<p class="l">${label}</p><p class="v">${fmt(cur[key])}</p>${sub ? `<p class="p">${sub}</p>` : ''}${cmp}`;
     return `<div class="card">${body}</div>`;
   }).join('');
   document.getElementById('kpi').innerHTML = S.tab === 'marketing'
