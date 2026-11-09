@@ -145,7 +145,13 @@ function renderKPI() {
     : `<div class="kpi">${cardHtml(core)}</div>`;
 }
 
-function render() { renderKPI(); ({ overview: vOverview, marketing: vMarketing, product: vProduct, explorer: vExplorer, forecast: vForecast }[S.tab])(); }
+function render() {
+  document.getElementById('kpi').style.display = S.tab === 'target' ? 'none' : '';
+  document.querySelector('.rangebox').style.display = S.tab === 'target' ? 'none' : '';
+  if (S.tab === 'target') { vTarget(); return; }
+  document.getElementById('view').classList.remove('target-view');
+  renderKPI(); ({ overview: vOverview, marketing: vMarketing, product: vProduct, explorer: vExplorer, forecast: vForecast }[S.tab])();
+}
 
 // ============ OVERVIEW ============
 function vOverview() {

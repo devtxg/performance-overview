@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Koccie Performance 2026</title>
   <script>document.write('<link rel="stylesheet" href="./styles.css?_=' + Date.now() + '">');</script>   <!-- cache-bust: luôn lấy CSS mới -->
+  <script>document.write('<link rel="stylesheet" href="./target.css?_=' + Date.now() + '">');</script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -15,6 +16,7 @@
         <button data-tab="overview" class="on">Overview</button>
         <button data-tab="marketing">Marketing</button>
         <button data-tab="product">Product</button>
+        <button data-tab="target">2026 Target</button>
       </nav>
     </div>
     <div class="rangebox">
@@ -37,6 +39,7 @@
   <div id="kpi"></div>
   <main id="view"></main>
 
+  <script>document.write('<script src="./target.js?_=' + Date.now() + '"><\/script>');</script>
   <script>document.write('<script src="./app.js?_=' + Date.now() + '"><\/script>');</script>   <!-- cache-bust: luôn lấy app.js mới -->
 </body>
 </html>
