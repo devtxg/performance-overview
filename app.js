@@ -88,8 +88,8 @@ const adsFiltered = () => { const r = rangeDates(); return DATA.ads.filter(o => 
 // ===== KPI strip (mọi tab) =====
 function kpiVals(ov) {
   const sales = sum(ov, salesOf), ads = sum(ov, o => o.totalAds), orders = sum(ov, o => o.orders);
-  const fb = sum(ov, o => o.meta), gg = sum(ov, o => o.google), tk = sum(ov, o => o.tiktok), api = sum(ov, o => o.api), ful = sum(ov, o => o.fulfill), net = sum(ov, o => o.profit);
-  return { orders, sales, ads, fb, gg, tk, aov: sales / orders || 0, roas: sales / ads || 0, api, ful, net };
+  const fb = sum(ov, o => o.meta), gg = sum(ov, o => o.google), tk = sum(ov, o => o.tiktok), snap = sum(ov, o => o.snapchat || 0), est = sum(ov, o => o.metaEstimated || 0), api = sum(ov, o => o.api), ful = sum(ov, o => o.fulfill), net = sum(ov, o => o.profit);
+  return { orders, sales, ads, fb, gg, tk, snap, est, aov: sales / orders || 0, roas: sales / ads || 0, api, ful, net };
 }
 // % thay đổi vs kỳ trước → ▲ xanh (tăng) / ▼ đỏ (giảm)
 function deltaHtml(cur, prev) {
@@ -130,6 +130,8 @@ function renderKPI() {
     ['FB Ads', 'fb', usd2, c => (c.fb / c.ads * 100 || 0).toFixed(1) + '% of ads'],
     ['Google Ads', 'gg', usd2, c => (c.gg / c.ads * 100 || 0).toFixed(1) + '% of ads'],
     ['TikTok', 'tk', usd2, c => (c.tk / c.ads * 100 || 0).toFixed(1) + '% of ads'],
+    ['Snapchat', 'snap', usd2, c => (c.snap / c.ads * 100 || 0).toFixed(1) + '% of ads'],
+    ['Meta estimated', 'est', usd2, c => c.est ? 'Included in FB Ads; estimate' : ''],
     ['AOV', 'aov', usd2, null],
     ['API Cost', 'api', usd2, c => (c.api / c.sales * 100 || 0).toFixed(1) + '% of sales'],
     ['Fulfill Cost', 'ful', usd2, c => (c.ful / c.sales * 100 || 0).toFixed(1) + '% of sales']
@@ -167,11 +169,11 @@ function vOverview() {
       <h3 style="margin:0" id="ovT">Daily Performance</h3>
       <span class="seg" id="ovMode"><button data-m="daily" class="${S.mode==='daily'?'on':''}">Daily</button><button data-m="cum" class="${S.mode==='cum'?'on':''}">Cumulative YTD</button></span></div>
       <div class="chartwrap r4"><canvas id="ovChart"></canvas></div></div>
-    <div class="panel"><h3>Daily data <span style="font-weight:400;color:var(--muted);font-size:11px">(last 3 cols = cumulative from ${DATA.fromDate})</span></h3>
-      <div class="scroll scrollv"><table><thead><tr><th>Date</th><th>Orders</th><th>Sales</th><th>Total Ads</th><th>ROAS</th><th>FB</th><th>Google</th><th>TikTok</th><th>API</th><th>Fulfill</th><th>Net Profit</th><th>Σ Sales</th><th>Σ Spend</th><th>Σ Net Profit</th></tr></thead><tbody>${
+    <div class="panel"><h3>Daily data <span style="font-weight:400;color:var(--muted);font-size:11px">(last 3 cols = cumulative from ${DATA.fromDate}; * Meta spend estimated)</span></h3>
+      <div class="scroll scrollv"><table><thead><tr><th>Date</th><th>Orders</th><th>Sales</th><th>Total Ads</th><th>ROAS</th><th>FB</th><th>Google</th><th>TikTok</th><th>Snapchat</th><th>API</th><th>Fulfill</th><th>Net Profit</th><th>Σ Sales</th><th>Σ Spend</th><th>Σ Net Profit</th></tr></thead><tbody>${
         rows.slice().reverse().map(o => { const c = cum[o.date] || {}; const pv = lastDates.indexOf(o.date) >= 0;
           const roas = o.totalAds ? (salesOf(o) / o.totalAds).toFixed(2) + 'x' : '0.00x';
-          return `<tr><td>${pv?'<span class="prov">●</span> ':''}${o.date.slice(5)}</td><td>${o.orders}</td><td>${k$(salesOf(o))}</td><td>${k$(o.totalAds)}</td><td>${roas}</td><td>${k$(o.meta)}</td><td>${k$(o.google)}</td><td>${k$(o.tiktok)}</td><td>${k$(o.api)}</td><td>${k$(o.fulfill)}</td><td class="${o.profit<0?'neg':''}">${k$(o.profit)}</td><td>${k$(c.r||0)}</td><td>${k$(c.s||0)}</td><td class="${(c.p||0)<0?'neg':''}">${k$(c.p||0)}</td></tr>`; }).join('')
+          return `<tr><td>${pv?'<span class="prov">●</span> ':''}${o.date.slice(5)}${o.metaEstimated ? ' *' : ''}</td><td>${o.orders}</td><td>${k$(salesOf(o))}</td><td>${k$(o.totalAds)}</td><td>${roas}</td><td>${k$(o.meta)}</td><td>${k$(o.google)}</td><td>${k$(o.tiktok)}</td><td>${k$(o.snapchat||0)}</td><td>${k$(o.api)}</td><td>${k$(o.fulfill)}</td><td class="${o.profit<0?'neg':''}">${k$(o.profit)}</td><td>${k$(c.r||0)}</td><td>${k$(c.s||0)}</td><td class="${(c.p||0)<0?'neg':''}">${k$(c.p||0)}</td></tr>`; }).join('')
       }</tbody></table></div></div>`;
   document.getElementById('ovMode').addEventListener('click', e => { if (e.target.tagName==='BUTTON'){ S.mode=e.target.dataset.m; vOverview(); }});
   const mk = (lab, arr, col) => ({ label: lab, data: arr, borderColor: col, backgroundColor: col, pointRadius: 0, borderWidth: 2, tension: .3 });
@@ -227,24 +229,26 @@ function ovComboChart(id, labels, bars, roas) {
 }
 
 // ============ MARKETING ============
-const MKT_COL = { Meta: '#0866FF', Google: '#34A853', TikTok: '#25F4EE' };   // màu brand từng nền tảng (chart line)
+const MKT_COL = { Meta: '#0866FF', Google: '#34A853', TikTok: '#25F4EE', Snapchat: '#facc15' };   // màu brand từng nền tảng (chart line)
 // Label tab phối màu từng chữ giống logo. Google: G-o-o-g-l-e; TikTok: glitch cyan/hồng (class .ttk).
 const GOOGLE_LETTERS = [['G','#4285F4'],['o','#EA4335'],['o','#FBBC05'],['g','#4285F4'],['l','#34A853'],['e','#EA4335']];
 const mktTabLabel = c => c === 'Google' ? GOOGLE_LETTERS.map(([l, col]) => `<span style="color:${col}">${l}</span>`).join('')
   : c === 'TikTok' ? '<span class="ttk">TikTok</span>' : c;
 // Gom ads theo account + tổng (spend/clicks/impr/platformRevenue).
 function aggByAccount(arr) {
-  const by = {}, tot = { spend: 0, clicks: 0, impr: 0, rev: 0 };
+  const by = {}, tot = { spend: 0, clicks: 0, impr: 0, rev: 0, costOnly: 0 };
   arr.forEach(a => { const k = a.account || '(no account)';
-    const g = by[k] || (by[k] = { spend: 0, clicks: 0, impr: 0, rev: 0 });
+    const g = by[k] || (by[k] = { spend: 0, clicks: 0, impr: 0, rev: 0, costOnly: 0 });
     g.spend += a.spend; g.clicks += a.clicks; g.impr += a.impressions; g.rev += a.platformRevenue;
-    tot.spend += a.spend; tot.clicks += a.clicks; tot.impr += a.impressions; tot.rev += a.platformRevenue; });
+    if (a.costOnly) g.costOnly += a.spend;
+    tot.spend += a.spend; tot.clicks += a.clicks; tot.impr += a.impressions; tot.rev += a.platformRevenue;
+    if (a.costOnly) tot.costOnly += a.spend; });
   return { by, tot };
 }
-const adMetrics = g => ({ spend: g.spend, cpc: g.clicks ? g.spend / g.clicks : 0, cpm: g.impr ? g.spend / g.impr * 1000 : 0, roas: g.spend ? g.rev / g.spend : 0, impr: g.impr, ctr: g.impr ? g.clicks / g.impr * 100 : 0 });
+const adMetrics = g => ({ spend: g.spend, costOnly: g.costOnly, cpc: g.costOnly ? null : g.clicks ? g.spend / g.clicks : null, cpm: g.costOnly ? null : g.impr ? g.spend / g.impr * 1000 : null, roas: g.costOnly ? null : g.spend ? g.rev / g.spend : null, impr: g.impr, ctr: g.impr ? g.clicks / g.impr * 100 : null });
 // Δ% vs kỳ trước. opt.invert: thấp hơn = tốt (CPC/CPM → giảm xanh); opt.neutral: không phán xét (spend).
 function deltaEl(cur, prev, opt, tag) {
-  tag = tag || 'span'; if (prev == null) return '';
+  tag = tag || 'span'; if (prev == null || cur == null) return '';
   let cls, txt;
   if (prev === 0) { if (!cur) return ''; cls = opt && opt.neutral ? 'flat' : 'up'; txt = '▲ new'; }
   else { const pct = (cur - prev) / Math.abs(prev) * 100;
@@ -253,12 +257,13 @@ function deltaEl(cur, prev, opt, tag) {
       cls = good === null ? 'flat' : good ? 'up' : 'down'; txt = (up ? '▲' : '▼') + ' ' + Math.abs(pct).toFixed(1) + '%'; } }
   return `<${tag} class="cmp ${cls}">${txt}</${tag}>`;
 }
-const fM2 = v => '$' + v.toFixed(2), fRoas = v => v.toFixed(2) + 'x', fInt = v => Math.round(v).toLocaleString(), fPct = v => v.toFixed(2) + '%';
+const fM2 = v => v == null ? '—' : '$' + v.toFixed(2), fRoas = v => v == null ? '—' : v.toFixed(2) + 'x', fInt = v => v == null ? '—' : Math.round(v).toLocaleString(), fPct = v => v == null ? '—' : v.toFixed(2) + '%';
 // Card tổng theo nền tảng: [label, metricKey, format, deltaOpt]. invert: thấp=tốt; neutral: không phán xét.
 const MKT_CARDS = {
   Meta:   [['Amount spent','spend',usd2,{neutral:1}], ['CPC','cpc',fM2,{invert:1}], ['CPM','cpm',fM2,{invert:1}], ['ROAS','roas',fRoas,{}]],
   Google: [['Cost','spend',usd2,{neutral:1}], ['Impressions','impr',fInt,{neutral:1}], ['CTR','ctr',fPct,{}], ['CPC','cpc',fM2,{invert:1}], ['ROAS','roas',fRoas,{}]],
-  TikTok: [['Cost','spend',usd2,{neutral:1}], ['CPC','cpc',fM2,{invert:1}], ['CPM','cpm',fM2,{invert:1}], ['ROAS','roas',fRoas,{}]]
+  TikTok: [['Cost','spend',usd2,{neutral:1}], ['CPC','cpc',fM2,{invert:1}], ['CPM','cpm',fM2,{invert:1}], ['ROAS','roas',fRoas,{}]],
+  Snapchat: [['Cost','spend',usd2,{neutral:1}], ['CPC','cpc',fM2,{invert:1}], ['CPM','cpm',fM2,{invert:1}], ['ROAS','roas',fRoas,{}]]
 };
 
 function vMarketing() {
@@ -268,8 +273,8 @@ function vMarketing() {
   const prev = ps ? aggByAccount(DATA.ads.filter(a => a.channel === ch && ps.has(a.date))) : null;
   const ct = adMetrics(cur.tot), pt = prev ? adMetrics(prev.tot) : null;
 
-  const MKT_CLS = { Meta: 'tab-meta', Google: 'tab-goog', TikTok: 'tab-tik' };
-  const subnav = `<div class="seg" id="mktNav" style="margin-bottom:12px">${['Meta','Google','TikTok'].map(c => `<button data-c="${c}" class="${MKT_CLS[c]}${ch===c?' on':''}"${ch===c?'':' style="opacity:.45"'}>${mktTabLabel(c)}</button>`).join('')}</div>`;
+  const MKT_CLS = { Meta: 'tab-meta', Google: 'tab-goog', TikTok: 'tab-tik', Snapchat: '' };
+  const subnav = `<div class="seg" id="mktNav" style="margin-bottom:12px">${['Meta','Google','TikTok','Snapchat'].map(c => `<button data-c="${c}" class="${MKT_CLS[c]}${ch===c?' on':''}"${ch===c?'':' style="opacity:.45"'}>${mktTabLabel(c)}</button>`).join('')}</div>`;
   const tcard = (lab, key, fmt, opt) => `<div class="card"><p class="l">${lab}</p><p class="v">${fmt(ct[key])}</p>${pt ? deltaEl(ct[key], pt[key], opt, 'p') : ''}</div>`;
   const totals = `<div class="kpi">${MKT_CARDS[ch].map(c => tcard(c[0], c[1], c[2], c[3])).join('')}</div>`;
 
@@ -288,7 +293,8 @@ function vMarketing() {
       <span class="seg" id="mMetric">${['spend','cpc','cpm','roas'].map(m => `<button data-k="${m}" class="${S.metric===m?'on':''}">${m.toUpperCase()}</button>`).join('')}</span></div>
       <div class="chartwrap r4"><canvas id="mChart"></canvas></div></div>`;
 
-  document.getElementById('view').innerHTML = subnav + totals + acctPanel + trend;
+  const missing = ct.costOnly > 0 ? `<div class="panel" style="padding:10px 14px">${ch === 'Meta' ? 'Includes estimated spend for account 595 on 13–14 Nov. ' : 'Spend comes from the manual sheet. '}Channel CPC, CPM and ROAS are unavailable where clicks, impressions or attributed revenue are missing. Blended ROAS and profit include this spend.</div>` : '';
+  document.getElementById('view').innerHTML = subnav + missing + totals + acctPanel + trend;
   document.getElementById('mktNav').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { S.mkt = b.dataset.c; vMarketing(); } });   // closest: click trúng <span> chữ vẫn nhận
   document.getElementById('mMetric').addEventListener('click', e => { if (e.target.tagName === 'BUTTON') { S.metric = e.target.dataset.k; vMarketing(); } });
 
@@ -505,3 +511,4 @@ function lineChart(id, labels, datasets) {
       scales: { y: { ticks: { color: CH_LABEL, font: { size: 10 }, callback: v => Math.abs(v) >= 1000 ? '$' + (v/1000).toFixed(0) + 'k' : v }, grid: { color: CH_GRID } },
                 x: { ticks: { color: CH_LABEL, font: { size: 9 }, maxTicksLimit: 9 }, grid: { color: CH_GRID2 } } } } });
 }
+
